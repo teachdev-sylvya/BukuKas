@@ -125,7 +125,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 @media(max-width:380px){.rkl .v b{font-size:12.5px}}
 .subtab{position:sticky;top:0;z-index:4;display:flex;gap:6px;overflow-x:auto;padding:12px 0 10px;margin-top:4px;background:var(--bg);scrollbar-width:none}
 .subtab::-webkit-scrollbar{display:none}
-.subtab button{flex:1 1 0;border:1.5px solid var(--lav);background:var(--pn);color:var(--pri);font:inherit;font-size:14px;font-weight:800;padding:9px 4px;min-height:42px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.subtab{gap:5px}.subtab button{flex:1 1 0;border:1.5px solid var(--lav);background:var(--pn);color:var(--pri);font:inherit;font-size:14px;font-weight:800;padding:9px 4px;min-height:42px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .subtab button[aria-selected=true]{background:var(--pri);color:#fff;border-color:var(--pri)}
 #rMode{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}#rMode .chip{padding:7px 4px;font-size:14px}
 .pbar .per{margin:0 auto}
@@ -215,6 +215,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 <div class="subtab" role="tablist" id="rSubs">
   <button type="button" data-s="grafik">Grafik</button>
   <button type="button" data-s="kategori">Kategori</button>
+  <button type="button" data-s="tren">Tren</button>
   <button type="button" data-s="dompet">Dompet</button>
   <button type="button" data-s="transaksi">Transaksi</button>
 </div>
@@ -251,6 +252,18 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
   <p class="hint" style="margin-top:-6px">Masuk/keluar = pemasukan &amp; pengeluaran. Saldo ± = perubahan saldo, sudah termasuk pindah dana &amp; investasi. Ketuk dompet untuk rincian.</p>
   <div class="rkl" id="rkT"></div>
   <div id="rkDet"></div>
+</div>
+</div>
+<div data-sub="tren" hidden>
+<div class="pn">
+  <h2 id="tnH">Tren pengeluaran bulanan</h2>
+  <p class="hint" style="margin-top:-6px">12 bulan sampai bulan yang dipilih di atas. Pilih sampai 4 kategori untuk dibandingkan.</p>
+  <div class="chips" id="tnK" style="margin:10px 0"></div>
+  <div class="leg" id="tnLeg"></div>
+  <div class="fig"><svg id="tnCh" role="img" aria-label="Grafik tren pengeluaran per bulan"></svg></div>
+  <div class="cap" id="tnCap">Ketuk titik bulan untuk melihat angkanya.</div>
+  <h3>Rincian per bulan</h3>
+  <div class="rkl" id="tnT"></div>
 </div>
 </div>
 <div data-sub="transaksi" hidden>
@@ -381,7 +394,7 @@ const fmtIn=el=>el.addEventListener('input',()=>{const n=num(el.value);el.value=
 const fD=s=>{const d=pd(s);return HARI[d.getDay()]+', '+d.getDate()+' '+BLN[d.getMonth()]+' '+d.getFullYear()};
 const uid0=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
-const KAT={out:[['Makan & minum','makan minum kopi jajan sarapan resto gofood grabfood shopeefood bakso nasi snack'],['Belanja rumah','beras sayur pasar belanja minyak sabun indomaret alfamart galon gas lpg telur ikan ayam daging'],['Transportasi','bensin bbm pertalite pertamax parkir tol ojek gojek krl busway servis motor mobil'],['Tagihan','listrik pln pdam token iuran ipl bpjs wifi indihome sampah'],['Pulsa & internet','pulsa kuota data'],['Pendidikan & kuliah','spp kuliah ukt buku fotokopi print makalah sekolah les seminar'],['Kesehatan','obat dokter klinik apotek vitamin rumah sakit'],['Anak','anak susu popok mainan saku'],['Nafkah orang tua','ortu orang tua mertua ibu bapak mama papa umi abi'],['Sedekah & infaq','sedekah infaq infak wakaf donasi masjid kajian'],['Zakat','zakat'],['Olahraga','gym zumba trainer pt'],['Cicilan & hutang','cicilan kredit angsuran paylater kpr hutang'],['Biaya admin bank','admin biaya transfer bulanan materai'],['Pajak bank','pajak pph'],['Tip','tip tips tipping'],['Pakaian & pribadi','baju gamis jilbab kerudung khimar skincare salon sepatu tas'],['Lainnya','']],
+const KAT={out:[['Makan & minum','makan minum kopi jajan sarapan resto gofood grabfood shopeefood bakso nasi snack'],['Listrik','listrik pln token'],['Air','pdam palyja aetra tagihan air bayar air'],['Gas','gas lpg elpiji pgn'],['Belanja rumah','beras sayur pasar belanja minyak sabun indomaret alfamart galon telur ikan ayam daging'],['Transportasi','bensin bbm pertalite pertamax parkir tol ojek gojek krl busway servis motor mobil'],['Tagihan lain','iuran ipl bpjs wifi indihome sampah tagihan'],['Pulsa & internet','pulsa kuota data'],['Pendidikan & kuliah','spp kuliah ukt buku fotokopi print makalah sekolah les seminar'],['Kesehatan','obat dokter klinik apotek vitamin rumah sakit'],['Anak','anak susu popok mainan saku'],['Nafkah orang tua','ortu orang tua mertua ibu bapak mama papa umi abi'],['Sedekah & infaq','sedekah infaq infak wakaf donasi masjid kajian'],['Zakat','zakat'],['Olahraga','gym zumba trainer pt'],['Cicilan & hutang','cicilan kredit angsuran paylater kpr hutang'],['Biaya admin bank','admin biaya transfer bulanan materai'],['Pajak bank','pajak pph'],['Tip','tip tips tipping'],['Pakaian & pribadi','baju gamis jilbab kerudung khimar skincare salon sepatu tas'],['Lainnya','']],
  in:[['Gaji','gaji'],['Tunjangan','tunjangan sertifikasi tpg tpp tukin'],['Honor','honor narasumber mentor pengawas panitia lembur'],['Usaha / jualan','jualan penjualan usaha order laba'],['Hadiah / pemberian','hadiah thr kado dikasih pemberian'],['Bunga bank','bunga giro'],['Investasi / bagi hasil','bagi hasil dividen investasi emas'],['Lainnya','']]};
 const MET=['Tunai','Transfer bank','QRIS','E-wallet'];
 const JEN=[['kas','Uang tunai',1],['bank','Tabungan bank',1],['ewallet','E-wallet',1],['emas','Emas / logam mulia',1],['perhiasan','Perhiasan emas',1],['haji','Tabungan haji',1],['invest','Deposito / investasi',1],['piutang','Piutang lancar',1],['properti','Rumah / tanah',0],['kendaraan','Kendaraan',0],['lain','Lainnya',0],['hutang','Hutang / cicilan',1]];
@@ -640,7 +653,7 @@ $('rkT').onclick=e=>{const r=e.target.closest('[data-rk]');if(!r)return;rkSel=rk
 document.addEventListener('click',e=>{if(e.target.closest('[data-rkc]')){rkSel='';$('rkT').querySelectorAll('.on').forEach(x=>x.classList.remove('on'));rkDetail()}});
 let rSub='grafik';try{rSub=localStorage.getItem(LS+'-sub')||'grafik'}catch(e){}
 function showSub(){document.querySelectorAll('#v-laporan [data-sub]').forEach(d=>d.hidden=d.dataset.sub!==rSub);
-  document.querySelectorAll('#rSubs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.s===rSub));if(rSub==='grafik')draw()}
+  document.querySelectorAll('#rSubs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.s===rSub));if(rSub==='grafik')draw();if(rSub==='tren')drawTn()}
 $('rSubs').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSub=b.dataset.s;try{localStorage.setItem(LS+'-sub',rSub)}catch(x){};showSub()};
 $('rBk').onclick=e=>{const r=e.target.closest('[data-bm]');if(!r)return;rM='bulan';rRef=r.dataset.bm;render();window.scrollTo({top:0,behavior:'smooth'})};
 function renderLap(){if(rAcc&&!K.akun.some(a=>a.id===rAcc))rAcc='';
@@ -666,10 +679,10 @@ function renderLap(){if(rAcc&&!K.akun.some(a=>a.id===rAcc))rAcc='';
   donut('o',grp('out',x=>x.k),r.l,l.filter(x=>x.t==='out'));donut('i',grp('in',x=>x.k),r.l,l.filter(x=>x.t==='in'));
   rekap(l,r.l);
   const byD={};l.forEach(x=>(byD[x.d]||=[]).push(x));
-  $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(txRow).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>';showSub()}
+  $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(txRow).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>';renderTren();showSub()}
 const svg=$('rCh');
 function draw(){if(view!=='laporan'||!bk.length)return;const W=svg.clientWidth,H=svg.clientHeight;if(!W)return;
-  const pl=W<520?36:52,pb=24,pt=8,n=bk.length,mx=Math.max(1,...bk.map(b=>Math.max(b.i,b.o)));
+  const pl=W<520?46:56,pb=24,pt=8,n=bk.length,mx=Math.max(1,...bk.map(b=>Math.max(b.i,b.o)));
   const gw=(W-pl-4)/n,bw=Math.max(2,Math.min(16,gw*.36)),y=v=>pt+(H-pt-pb)*(1-v/mx);
   const every=Math.ceil(n/(W<520?7:16));let s='';
   for(let k=0;k<=3;k++){const v=mx*k/3,yy=y(v);s+=`<line x1="${pl}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--ln)"/><text x="${pl-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--mut)">${k?rpS(v):'0'}</text>`}
@@ -681,6 +694,37 @@ function draw(){if(view!=='laporan'||!bk.length)return;const W=svg.clientWidth,H
   svg.innerHTML=s}
 svg.onclick=e=>{const i=e.target.dataset&&e.target.dataset.i;if(i==null)return;const b=bk[i];$('rCap').innerHTML=`<b>${esc(b.f)}</b> · masuk <b style="color:var(--in)">${rp(b.i)}</b> · keluar <b style="color:var(--out)">${rp(b.o)}</b>`};
 const ro=new ResizeObserver(draw);ro.observe(svg);
+/* ---------- tren bulanan per kategori ---------- */
+let tnSel=['Listrik','Air','Gas'];try{const v=JSON.parse(localStorage.getItem(LS+'-tren'));if(Array.isArray(v)&&v.length)tnSel=v}catch(e){}
+let tnM=[],tnD={};
+const pct=(a,b)=>b?Math.round((a-b)/b*100):null;
+function renderTren(){const all=[...new Set([...KAT.out.map(x=>x[0]),...allTx().filter(t=>t.t==='out').map(t=>t.k)])].filter(k=>k!=='Lainnya'||allTx().some(t=>t.k==='Lainnya'));
+  $('tnK').innerHTML=all.map(k=>`<button type="button" class="chip${tnSel.includes(k)?' on':''}" data-tk="${esc(k)}">${esc(k)}</button>`).join('');
+  const d=pd(rRef);tnM=[];for(let i=11;i>=0;i--){const x=new Date(d.getFullYear(),d.getMonth()-i,1);tnM.push(x.getFullYear()+'-'+pad(x.getMonth()+1))}
+  tnD={};tnSel.forEach(k=>tnD[k]=tnM.map(m=>allTx().filter(t=>t.t==='out'&&t.k===k&&t.d.slice(0,7)===m&&accF(t)).reduce((a,t)=>a+t.n,0)));
+  $('tnH').textContent='Tren pengeluaran bulanan'+(rAcc?' · '+akn(rAcc):'');
+  $('tnLeg').innerHTML=tnSel.map((k,i)=>`<span><i style="background:${DC[i]}"></i>${esc(k)}</span>`).join('');
+  const mn=m=>BULAN[+m.slice(5)-1]+' '+m.slice(0,4),nb=v=>v?Math.round(v).toLocaleString('id-ID'):'–';
+  const rows=tnM.map((m,i)=>[m,i]).filter(([m,i])=>tnSel.some(k=>tnD[k][i])).reverse();
+  $('tnT').innerHTML=!tnSel.length?'<div class="empty">Pilih kategori dulu.</div>':rows.length?rows.map(([m,i])=>`<div class="r"><div class="nm">${mn(m)}</div><div class="v" style="grid-template-columns:repeat(${Math.min(tnSel.length,4)},minmax(0,1fr))">${tnSel.map((k,j)=>{const v=tnD[k][i],p=i?pct(v,tnD[k][i-1]):null;
+    return `<div><span><i style="display:inline-block;width:8px;height:8px;border-radius:3px;background:${DC[j]};margin-right:4px"></i>${esc(k)} (Rp)</span><b>${nb(v)}</b>${p!=null&&tnD[k][i-1]&&v?`<small style="font-size:12px;font-weight:800;color:${p>0?'var(--out)':p<0?'var(--in)':'var(--mut)'}">${p>0?'▲':p<0?'▼':'='} ${Math.abs(p)}%</small>`:''}</div>`}).join('')}</div></div>`).join('')
+    +'<p class="hint">▲ merah = naik dari bulan sebelumnya, ▼ hijau = turun.</p>':'<div class="empty">Belum ada pengeluaran untuk kategori ini dalam 12 bulan terakhir.</div>';
+  drawTn()}
+$('tnK').onclick=e=>{const b=e.target.closest('[data-tk]');if(!b)return;const k=b.dataset.tk;
+  if(tnSel.includes(k))tnSel=tnSel.filter(x=>x!==k);else if(tnSel.length>=4){toast('Maksimal 4 kategori sekaligus',true);return}else tnSel=[...tnSel,k];
+  try{localStorage.setItem(LS+'-tren',JSON.stringify(tnSel))}catch(x){};renderTren()};
+const tsv=$('tnCh');
+function drawTn(){if(view!=='laporan'||rSub!=='tren')return;const W=tsv.clientWidth,H=tsv.clientHeight;if(!W||!tnM.length)return;
+  const pl=W<520?46:56,pb=24,pt=12,pr=10,n=tnM.length,mx=Math.max(1,...tnSel.flatMap(k=>tnD[k]||[0]));
+  const x=i=>pl+(W-pl-pr)*(n===1?.5:i/(n-1)),y=v=>pt+(H-pt-pb)*(1-v/mx);let s='';
+  for(let k=0;k<=3;k++){const v=mx*k/3,yy=y(v);s+=`<line x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}" stroke="var(--ln)"/><text x="${pl-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--mut)">${k?rpS(v):'0'}</text>`}
+  const ev=W<520?2:1;tnM.forEach((m,i)=>{if(i%ev===(n-1)%ev)s+=`<text x="${x(i)}" y="${H-7}" text-anchor="middle" font-size="11" fill="var(--mut)">${BLN[+m.slice(5)-1]}</text>`});
+  tnSel.forEach((k,j)=>{const d=tnD[k]||[];s+=`<polyline fill="none" stroke="${DC[j]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${d.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`+d.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="${v?3.5:2}" fill="${v?DC[j]:'var(--ln)'}"/>`).join('')});
+  tnM.forEach((m,i)=>{const w=(W-pl-pr)/n;s+=`<rect data-ti="${i}" x="${x(i)-w/2}" y="0" width="${w}" height="${H}" fill="transparent" style="cursor:pointer"/>`});
+  tsv.innerHTML=s}
+tsv.onclick=e=>{const i=e.target.dataset&&e.target.dataset.ti;if(i==null)return;const m=tnM[i];
+  $('tnCap').innerHTML=`<b>${BULAN[+m.slice(5)-1]} ${m.slice(0,4)}</b>`+tnSel.map((k,j)=>` · <span style="color:${DC[j]};font-weight:800">${esc(k)}</span> ${rp(tnD[k][i])}`).join('')};
+const ro2=new ResizeObserver(drawTn);ro2.observe(tsv);
 
 /* ---------- aset ---------- */
 let aEdit=null;
