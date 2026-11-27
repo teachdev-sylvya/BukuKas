@@ -422,12 +422,12 @@ async function push(){if(!gh.token||!gh.id)return;if(!navigator.onLine){st('offl
   pushing=false;if(again){again=false;push()}}
 async function pull(){if(!gh.token||!gh.id){idle();return}if(!navigator.onLine){st('offline');return}
   try{const r=await readGist();
-    if(r&&(+r.updatedAt||0)>(K.updatedAt||0)){hist.push(JSON.stringify(K));K=norm(r);try{localStorage.setItem(LS,JSON.stringify(K))}catch(e){}render();toast('Data terbaru dari perangkat lain dimuat');st('synced')}
+    if(r&&(+r.updatedAt||0)>(K.updatedAt||0)){keepPrev();hist.push(JSON.stringify(K));K=norm(r);try{localStorage.setItem(LS,JSON.stringify(K))}catch(e){}render();toast('Data terbaru dari perangkat lain dimuat');st('synced')}
     else if(!r||(K.updatedAt||0)>(+r.updatedAt||0))await push();else st('synced')}
   catch(e){st(e.status===404?'err':'offline');if(e.status===404){gh.id='';saveGh();renderAtur()}}}
 async function useLocal(){K.updatedAt=Date.now();try{localStorage.setItem(LS,JSON.stringify(K))}catch(e){}clearTimeout(pT);await push();toast('Data perangkat ini dipakai & dikirim ke akun',true)}
 async function useRemote(){try{const r=await readGist();if(!r){toast('Data di akun masih kosong',true);return}
-  hist.push(JSON.stringify(K));K=norm(r);try{localStorage.setItem(LS,JSON.stringify(K))}catch(e){}render();st('synced');toast('Data dari akun dimuat ke perangkat ini')}
+  keepPrev();hist.push(JSON.stringify(K));K=norm(r);try{localStorage.setItem(LS,JSON.stringify(K))}catch(e){}render();st('synced');toast('Data dari akun dimuat ke perangkat ini')}
   catch(e){toast('Gagal mengambil data. Cek internet.',true)}}
 async function connectGh(tok,mode){gh={token:tok.trim(),id:''};st('saving');
   try{await api('/user');let found=null;for(let p=1;p<=5&&!found;p++){const l=await api('/gists?per_page=100&page='+p);found=l.find(g=>g.files&&g.files[GFILE]);if(l.length<100)break}
@@ -435,20 +435,40 @@ async function connectGh(tok,mode){gh={token:tok.trim(),id:''};st('saving');
     else{const g=await api('/gists',{method:'POST',body:JSON.stringify({description:'Data aplikasi Buku Kas Devy (jangan dihapus)',public:false,files:{[GFILE]:{content:JSON.stringify(K)}}})});gh.id=g.id;saveGh();st('synced');toast('Tersambung ✓ Penyimpanan sinkron dibuat',true)}}
   catch(e){gh={token:'',id:''};saveGh();idle();toast(e.status===401?'Token tidak valid. Cek lagi ya.':e.status===403||e.status===404?'Token belum punya izin "gist".':'Gagal tersambung. Cek internet lalu coba lagi.',true)}
   renderAtur()}
+const PK=LS+'-prev';
+function keepPrev(){if(!allTx().length&&!K.aset.length)return;try{localStorage.setItem(PK,JSON.stringify({at:Date.now(),K}))}catch(e){}}
+function prevInfo(){try{const v=JSON.parse(localStorage.getItem(PK));if(!v)return '';const n=Object.values(v.K.tx||{}).flat().length;return n+' transaksi, disimpan '+new Date(v.at).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}catch(e){return ''}}
+function restorePrev(){try{const v=JSON.parse(localStorage.getItem(PK));if(!v)return;mutate('Data sebelum ditimpa dikembalikan',()=>{K=norm(v.K)})}catch(e){toast('Gagal mengembalikan',true)}}
+const verCache={};
+const fmtT=t=>new Date(t).toLocaleString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+async function loadHist(){const box=$('ghHL');box.innerHTML='<p class="hint">Memuat riwayat…</p>';
+  try{const l=await api('/gists/'+gh.id+'/commits?per_page=60');
+    box.innerHTML=l.length?'<div style="margin-top:10px">'+l.map((c,i)=>`<div class="tx"><div><div class="k">${esc(fmtT(c.committed_at))}${i===0?' · <span style="color:var(--pri)">terbaru</span>':''}</div><div class="s" id="hv-${esc(c.version)}">Ketuk "Lihat" untuk melihat isinya</div></div><div></div><div><button class="mini" type="button" data-hv="${esc(c.version)}">Lihat</button></div></div>`).join('')+'</div>':'<p class="hint">Belum ada riwayat.</p>'}
+  catch(e){box.innerHTML='<p class="hint">Gagal memuat riwayat. Cek internet lalu coba lagi.</p>'}}
+async function getVer(v){if(verCache[v])return verCache[v];const g=await api('/gists/'+gh.id+'/'+v);const f=g.files&&g.files[GFILE];if(!f)return null;
+  const t=f.truncated?await (await fetch(f.raw_url)).text():f.content;const d=JSON.parse(t);verCache[v]=d;return d}
+async function peekVer(v,btn){const el=$('hv-'+v);if(!el)return;el.textContent='Memuat…';
+  try{const d=await getVer(v);if(!d){el.textContent='Versi ini kosong';return}const n=norm(d),nt=Object.values(n.tx).flat().length;
+    el.innerHTML=`<b>${nt} transaksi</b> · ${n.aset.length} aset · ${n.akun.length} dompet${n.updatedAt?' · diubah '+esc(fmtT(n.updatedAt)):''}`;
+    btn.outerHTML=`<button class="mini" type="button" data-hr="${esc(v)}" style="color:var(--pri);font-weight:900">Pulihkan</button>`}
+  catch(e){el.textContent='Gagal memuat versi ini'}}
+async function restoreVer(v){try{const d=await getVer(v);if(!d)return;keepPrev();mutate('Data dipulihkan dari riwayat ('+Object.values(norm(d).tx).flat().length+' transaksi)',()=>{K=norm(d)});renderAtur()}
+  catch(e){toast('Gagal memulihkan. Cek internet.',true)}}
 function renderAtur(){const on=gh.token&&gh.id;
-  $('ghBox').innerHTML=on?'<p class="ok-line">✓ Tersambung ke GitHub</p><p class="hint">Data tersimpan sebagai gist privat di akunmu dan ikut tersinkron otomatis tiap ada perubahan. Pasang token yang sama di HP, tablet, dan laptop.</p><div class="chips" style="margin-top:12px"><button class="btn" id="ghNow" type="button">Sinkron sekarang</button><button class="btn ghost" id="ghOff" type="button">Putuskan</button></div><h3>Kalau data antarperangkat beda</h3><div class="chips"><button class="btn ghost" id="ghLocal" type="button">⬆ Pakai data perangkat ini</button><button class="btn ghost" id="ghRemote" type="button">⬇ Ambil data dari akun</button></div><p class="hint">"Pakai data perangkat ini" menimpa data di akun; perangkat lain ikut berubah saat dibuka. Bisa dibatalkan dengan Urungkan di perangkat yang tertimpa.</p>'
+  $('ghBox').innerHTML=on?'<p class="ok-line">✓ Tersambung ke GitHub</p><p class="hint">Data tersimpan sebagai gist privat di akunmu dan ikut tersinkron otomatis tiap ada perubahan. Pasang token yang sama di HP, tablet, dan laptop.</p><div class="chips" style="margin-top:12px"><button class="btn" id="ghNow" type="button">Sinkron sekarang</button><button class="btn ghost" id="ghOff" type="button">Putuskan</button></div><h3>Kalau data antarperangkat beda</h3><div class="chips"><button class="btn ghost" id="ghLocal" type="button">⬆ Pakai data perangkat ini</button><button class="btn ghost" id="ghRemote" type="button">⬇ Ambil data dari akun</button></div><p class="hint">"Pakai data perangkat ini" menimpa data di akun; perangkat lain ikut berubah saat dibuka. Bisa dibatalkan dengan Urungkan di perangkat yang tertimpa.</p><h3>Riwayat data (pulihkan data lama)</h3><p class="hint">Setiap sinkron tersimpan sebagai versi di akun GitHub. Kalau data tertimpa atau hilang, pilih versi sebelumnya lalu pulihkan.</p><button class="btn" id="ghHist" type="button" style="margin-top:8px">🕘 Lihat riwayat data</button><div id="ghHL"></div>'+(prevInfo()?'<h3>Data sebelum ditimpa</h3><p class="hint">Perangkat ini menyimpan salinan data sebelum terakhir kali ditimpa ('+prevInfo()+').</p><button class="btn ghost" id="ghPrev" type="button">Kembalikan data itu</button>':'')
    :'<p class="hint" style="margin-top:0">Supaya data sama di semua perangkat, tempel <b>token GitHub</b> (izin <i>gist</i>) sekali di tiap perangkat. Token yang dipakai di Jejak Hijrah juga bisa dipakai di sini.</p><label for="ghTok">Token GitHub</label><input type="password" id="ghTok" placeholder="ghp_…" autocomplete="off"><label style="margin-top:14px">Kalau di akun sudah ada data, pakai data yang mana?</label><div class="chips"><label class="chip"><input type="radio" name="ghMode" value="local" checked style="width:auto;min-height:0;margin:0 6px 0 0;accent-color:var(--pri)">Data perangkat ini</label><label class="chip"><input type="radio" name="ghMode" value="remote" style="width:auto;min-height:0;margin:0 6px 0 0;accent-color:var(--pri)">Data dari akun</label></div><div class="chips" style="margin-top:12px"><button class="btn" id="ghOn" type="button">Sambungkan</button><a class="btn ghost" href="https://github.com/settings/tokens/new?scopes=gist&description=Buku%20Kas%20Devy" target="_blank" rel="noopener">Buat token ↗</a></div>'}
 $('ghBox').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   if(b.id==='ghOn'){const t=$('ghTok').value,m=(document.querySelector('input[name=ghMode]:checked')||{}).value||'local';if(t.trim())connectGh(t,m);else $('ghTok').focus()}
   if(b.id==='ghLocal')useLocal();if(b.id==='ghRemote')useRemote();
-  if(b.id==='ghNow')pull();
+  if(b.id==='ghNow')pull();if(b.id==='ghHist')loadHist();if(b.id==='ghPrev')restorePrev();
+  if(b.dataset.hv)peekVer(b.dataset.hv,b);if(b.dataset.hr)restoreVer(b.dataset.hr);
   if(b.id==='ghOff'){gh={token:'',id:''};saveGh();idle();renderAtur();toast('Sinkron diputus. Data tetap ada di perangkat ini.',true)}};
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pull();else if(pT&&gh.token){clearTimeout(pT);pT=null;push()}});
 window.addEventListener('online',pull);
 
 /* ---------- cadangan ---------- */
 $('bDown').onclick=()=>{const b=new Blob([JSON.stringify(K,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='cadangan-bukukas-'+today()+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Cadangan diunduh',true)};
-$('bFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const v=JSON.parse(r.result);if(!v||typeof v.tx!=='object'||!Array.isArray(v.aset))throw 0;mutate('Data dipulihkan dari cadangan',()=>{K=norm(v)})}catch(x){toast('File cadangan tidak dikenali',true)}};r.readAsText(f);e.target.value=''};
+$('bFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const v=JSON.parse(r.result);if(!v||typeof v.tx!=='object'||!Array.isArray(v.aset))throw 0;keepPrev();mutate('Data dipulihkan dari cadangan',()=>{K=norm(v)})}catch(x){toast('File cadangan tidak dikenali',true)}};r.readAsText(f);e.target.value=''};
 $('appUpd').onclick=()=>{toast('Memeriksa versi terbaru…',true);const go=()=>location.replace(location.pathname+'?v='+Date.now());
   if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration)navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{}).then(()=>setTimeout(go,800));else go()};
 
