@@ -94,6 +94,17 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .bars .t span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:800}
 .bars .tr{height:10px;background:var(--soft);border-radius:10px;margin-top:4px;overflow:hidden}
 .bars .tr div{height:100%;border-radius:10px}
+.dn{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:20px;align-items:center;margin-top:6px}
+.dn svg{width:100%;max-width:220px;aspect-ratio:1;display:block;margin:0 auto}
+.dn .lg{display:grid;gap:10px}
+.dn .lr{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:4px 10px;align-items:center;font-size:14px}
+.dn .lr i{width:14px;height:14px;border-radius:5px}
+.dn .lr .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dn .lr .vl{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.dn .lr .pc{grid-column:2/4;height:7px;background:var(--soft);border-radius:7px;overflow:hidden}
+.dn .lr .pc div{height:100%;border-radius:7px}
+.top1{background:var(--pink);border-radius:14px;padding:10px 14px;font-size:15px;margin-top:4px}
+@media(max-width:600px){.dn{grid-template-columns:1fr}.dn svg{max-width:200px}}
 .meter{height:18px;background:var(--soft);border-radius:18px;overflow:hidden;margin:10px 0 4px}
 .meter div{height:100%;background:linear-gradient(90deg,#f2c14e,#d99a12);border-radius:18px;transition:width .5s}
 .hero{font-size:clamp(34px,7vw,50px);font-weight:900;line-height:1.05;font-variant-numeric:tabular-nums;margin:4px 0;color:var(--pri)}
@@ -166,9 +177,13 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
   <div class="fig"><svg id="rCh" role="img" aria-label="Grafik pemasukan dan pengeluaran"></svg></div>
   <div class="cap" id="rCap">Ketuk batang untuk melihat angkanya.</div>
 </div>
+<div class="pn" style="margin-top:16px">
+  <h2 id="rDnH">Pengeluaran terbesar per kategori</h2>
+  <div id="rTop"></div>
+  <div class="dn"><svg id="rDn" viewBox="0 0 200 200" role="img" aria-label="Grafik pengeluaran per kategori"></svg><div class="lg" id="rDnL"></div></div>
+</div>
 <div class="grid two">
-  <div class="pn"><h2>Pengeluaran per kategori</h2><div class="bars" id="rOut"></div>
-    <h2 style="margin-top:22px">Pemasukan per kategori</h2><div class="bars" id="rIn"></div>
+  <div class="pn"><h2>Pemasukan per kategori</h2><div class="bars" id="rIn"></div>
     <h2 style="margin-top:22px">Pengeluaran per sumber dana</h2><div class="bars" id="rAk"></div></div>
   <div class="pn"><h2>Rincian transaksi</h2><div id="rList"></div></div>
 </div>
@@ -469,6 +484,16 @@ function buckets(r){const o=[];
   else{const y=r.s.slice(0,4);for(let i=0;i<12;i++){const mm=y+'-'+pad(i+1);o.push({l:BLN[i],s:mm+'-01',e:mm+'-31',f:BULAN[i]+' '+y})}}
   return o.map(b=>{const l=inR(b.s,b.e);return{...b,i:tot(l,'in'),o:tot(l,'out')}})}
 const chg=(a,b,u)=>b?`<small>${a>=b?'▲':'▼'} ${Math.abs(Math.round((a-b)/b*100))}% dari ${u}</small>`:'';
+const DC=['#7b5cc7','#e0607e','#e3a51c','#3f9a62','#9d84e0','#2f9fb5','#f29b6b','#b7aed0'];
+function donut(arr,lbl){$('rDnH').textContent='Pengeluaran terbesar · '+lbl;
+  const T=arr.reduce((a,x)=>a+x[1],0),svg=$('rDn');
+  if(!T){svg.innerHTML='<circle cx="100" cy="100" r="70" fill="none" stroke="var(--soft)" stroke-width="28"/><text x="100" y="105" text-anchor="middle" font-size="13" fill="var(--mut)">Belum ada</text>';$('rDnL').innerHTML='<div class="empty">Belum ada pengeluaran di periode ini.</div>';$('rTop').innerHTML='';return}
+  let it=arr.slice(0,7);if(arr.length>7)it=[...arr.slice(0,6),['Kategori lain',arr.slice(6).reduce((a,x)=>a+x[1],0)]];
+  const R=70,C=2*Math.PI*R;let off=0,seg='';
+  it.forEach(([k,v],i)=>{const L=v/T*C;seg+=`<circle cx="100" cy="100" r="${R}" fill="none" stroke="${DC[i%DC.length]}" stroke-width="28" stroke-dasharray="${Math.max(0,L-(it.length>1?1.5:0))} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 100 100)"><title>${esc(k)}: ${rp(v)}</title></circle>`;off+=L});
+  svg.innerHTML=seg+`<text x="100" y="94" text-anchor="middle" font-size="12" fill="var(--mut)" font-weight="700">Total</text><text x="100" y="116" text-anchor="middle" font-size="${rp(T).length>13?15:18}" font-weight="900" fill="var(--ink)">${rpS(T)}</text>`;
+  $('rDnL').innerHTML=it.map(([k,v],i)=>`<div class="lr"><i style="background:${DC[i%DC.length]}"></i><span class="nm">${i+1}. ${esc(k)} <span style="color:var(--mut);font-weight:600">${Math.round(v/T*100)}%</span></span><span class="vl">${rp(v)}</span><div class="pc"><div style="width:${v/it[0][1]*100}%;background:${DC[i%DC.length]}"></div></div></div>`).join('');
+  const [k0,v0]=arr[0];$('rTop').innerHTML=`<div class="top1">Paling besar: <b>${esc(k0)}</b> — ${rp(v0)} (${Math.round(v0/T*100)}% dari pengeluaran)</div>`}
 function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1)),pl=inR(pr.s,pr.e);
   $('rMode').innerHTML=MODES.map(([m,n])=>`<button class="chip${m===rM?' on':''}" data-m="${m}">${n}</button>`).join('');
   $('rLbl').textContent=r.l;
@@ -480,7 +505,7 @@ function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1))
   bk=buckets(r);draw();$('rCap').textContent='Ketuk batang untuk melihat angkanya.';
   const grp=(t,f)=>{const m={};l.filter(x=>t?x.t===t:x.t!=='tf').forEach(x=>{const k=f(x);m[k]=(m[k]||0)+x.n});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
   const bars=(arr,c,emp)=>{const T=arr.reduce((a,x)=>a+x[1],0);return arr.length?arr.map(([k,v])=>`<div class="b"><div class="t"><span>${esc(k)} <span style="color:var(--mut)">${Math.round(v/T*100)}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${c}"></div></div></div>`).join(''):`<div class="empty">${emp}</div>`};
-  $('rOut').innerHTML=bars(grp('out',x=>x.k),'var(--out)','Belum ada pengeluaran.');
+  donut(grp('out',x=>x.k),r.l);
   $('rIn').innerHTML=bars(grp('in',x=>x.k),'var(--in)','Belum ada pemasukan.');
   $('rAk').innerHTML=bars(grp('out',x=>x.a?akn(x.a):'Belum dipilih'),'var(--gold)','Belum ada pengeluaran.');
   const byD={};l.forEach(x=>(byD[x.d]||=[]).push(x));
