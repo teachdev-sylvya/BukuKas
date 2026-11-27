@@ -208,6 +208,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
     <div class="chips" id="rMode"></div>
     <div class="per"><button class="mini" id="rPrev" aria-label="Periode sebelumnya">◀</button><strong id="rLbl"></strong><button class="mini" id="rNext" aria-label="Periode berikutnya">▶</button></div>
   </div>
+  <label for="rAcc" style="margin-top:4px">Tampilkan dompet</label>
+  <select id="rAcc"></select>
   <div class="kpi" id="rKpi"></div>
 </div>
 <div class="subtab" role="tablist" id="rSubs">
@@ -222,6 +224,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
   <div class="leg"><span><i style="background:var(--in)"></i>Pemasukan</span><span><i style="background:var(--out)"></i>Pengeluaran</span></div>
   <div class="fig"><svg id="rCh" role="img" aria-label="Grafik pemasukan dan pengeluaran"></svg></div>
   <div class="cap" id="rCap">Ketuk batang untuk melihat angkanya.</div>
+  <h3 id="rBkH" style="margin-top:18px"></h3>
+  <div class="rkl" id="rBk"></div>
 </div>
 </div>
 <div data-sub="kategori" hidden>
@@ -556,11 +560,14 @@ function range(ref){const d=pd(ref),y=d.getFullYear(),m=d.getMonth();
   if(rM==='minggu'){const s=addD(ref,-((d.getDay()+6)%7)),e=addD(s,6),a=pd(s),b=pd(e);return{s,e,l:a.getDate()+' '+BLN[a.getMonth()]+' – '+b.getDate()+' '+BLN[b.getMonth()]+' '+b.getFullYear(),u:'pekan lalu'}}
   if(rM==='bulan')return{s:ds(new Date(y,m,1)),e:ds(new Date(y,m+1,0)),l:BULAN[m]+' '+y,u:'bulan lalu'};
   return{s:y+'-01-01',e:y+'-12-31',l:'Tahun '+y,u:'tahun lalu'}}
+let rAcc='';try{rAcc=localStorage.getItem(LS+'-racc')||''}catch(e){}
+const accF=t=>!rAcc||t.a===rAcc||(t.t==='tf'&&t.b===rAcc);
+$('rAcc').onchange=()=>{rAcc=$('rAcc').value;try{localStorage.setItem(LS+'-racc',rAcc)}catch(e){};rkSel='';render()};
 function buckets(r){const o=[];
   if(rM==='hari'||rM==='minggu'){const s=rM==='hari'?addD(r.s,-6):r.s;for(let i=0;i<7;i++){const x=addD(s,i);o.push({l:HARI[pd(x).getDay()].slice(0,3)+' '+pd(x).getDate(),s:x,e:x,f:fD(x),hl:rM==='hari'&&i===6})}}
   else if(rM==='bulan'){for(let x=r.s;x<=r.e;x=addD(x,1))o.push({l:String(pd(x).getDate()),s:x,e:x,f:fD(x)})}
   else{const y=r.s.slice(0,4);for(let i=0;i<12;i++){const mm=y+'-'+pad(i+1);o.push({l:BLN[i],s:mm+'-01',e:mm+'-31',f:BULAN[i]+' '+y})}}
-  return o.map(b=>{const l=inR(b.s,b.e);return{...b,i:tot(l,'in'),o:tot(l,'out')}})}
+  return o.map(b=>{const l=inR(b.s,b.e).filter(accF);return{...b,i:tot(l,'in'),o:tot(l,'out')}})}
 const chg=(a,b,u)=>b?`<small>${a>=b?'▲':'▼'} ${Math.abs(Math.round((a-b)/b*100))}% dari ${u}</small>`:'';
 const DC=['#7b5cc7','#e0607e','#e3a51c','#3f9a62','#9d84e0','#2f9fb5','#f29b6b','#b7aed0'];
 const DCI=['#3f9a62','#2f9fb5','#7b5cc7','#e3a51c','#8cc68f','#9d84e0','#f29b6b','#b7aed0'];
@@ -615,15 +622,25 @@ let rSub='grafik';try{rSub=localStorage.getItem(LS+'-sub')||'grafik'}catch(e){}
 function showSub(){document.querySelectorAll('#v-laporan [data-sub]').forEach(d=>d.hidden=d.dataset.sub!==rSub);
   document.querySelectorAll('#rSubs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.s===rSub));if(rSub==='grafik')draw()}
 $('rSubs').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSub=b.dataset.s;try{localStorage.setItem(LS+'-sub',rSub)}catch(x){};showSub()};
-function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1)),pl=inR(pr.s,pr.e);
+$('rBk').onclick=e=>{const r=e.target.closest('[data-bm]');if(!r)return;rM='bulan';rRef=r.dataset.bm;render();window.scrollTo({top:0,behavior:'smooth'})};
+function renderLap(){if(rAcc&&!K.akun.some(a=>a.id===rAcc))rAcc='';
+  $('rAcc').innerHTML='<option value="">Semua dompet</option>'+['kas','bank','ewallet'].map(j=>{const l=K.akun.filter(a=>a.j===j);return l.length?`<optgroup label="${AJ[j]}">`+l.map(a=>`<option value="${esc(a.id)}"${a.id===rAcc?' selected':''}>${esc(a.nm)}</option>`).join('')+'</optgroup>':''}).join('');
+  const r=range(rRef),l=inR(r.s,r.e).filter(accF),pr=range(shift(rRef,-1)),pl=inR(pr.s,pr.e).filter(accF),an=rAcc?' · '+akn(rAcc):'';
   $('rMode').innerHTML=MODES.map(([m,n])=>`<button class="chip${m===rM?' on':''}" data-m="${m}">${n}</button>`).join('');
-  $('rLbl').textContent=r.l;
+  $('rLbl').textContent=r.l;r.l+=an;
   const I=tot(l,'in'),O=tot(l,'out');
   $('rKpi').innerHTML=`<div><span>Pemasukan</span><b style="color:var(--in)">${rp(I)}</b>${chg(I,tot(pl,'in'),r.u)}</div>
    <div><span>Pengeluaran</span><b style="color:var(--out)">${rp(O)}</b>${chg(O,tot(pl,'out'),r.u)}${tot(l,'inv')?`<small style="display:block;color:var(--gold)">+ investasi ${rp(tot(l,'inv'))} (jadi aset)</small>`:''}</div>
    <div><span>Selisih</span><b>${rp(I-O)}</b><small>${I?Math.round(O/I*100)+'% pemasukan terpakai':l.length+' transaksi'}</small></div>`;
+  if(rAcc){const ti=l.reduce((a,t)=>a+(t.t==='tf'&&t.b===rAcc?t.n:0),0),to=l.reduce((a,t)=>a+(t.t==='tf'&&t.a===rAcc?t.n:0),0);
+    if(ti||to)$('rKpi').insertAdjacentHTML('beforeend',`<div style="grid-column:1/-1"><span>Pindah dana ${esc(akn(rAcc))}</span><small>masuk ${rp(ti)} · keluar ${rp(to)} · saldo sekarang ${rp(saldo(rAcc))}</small></div>`)
+    else $('rKpi').insertAdjacentHTML('beforeend',`<div style="grid-column:1/-1"><span>Saldo ${esc(akn(rAcc))} sekarang</span><b>${rp(saldo(rAcc))}</b></div>`)}
   $('rChH').textContent={hari:'7 hari terakhir',minggu:'Per hari dalam pekan',bulan:'Per tanggal',tahun:'Per bulan'}[rM];
   bk=buckets(r);draw();$('rCap').textContent='Ketuk batang untuk melihat angkanya.';
+  $('rChH').textContent+=an;
+  const bkr=bk.filter(b=>b.i||b.o),nb=v=>v?Math.round(v).toLocaleString('id-ID'):'–';
+  $('rBkH').textContent=bkr.length?'Rincian '+({hari:'per hari',minggu:'per hari',bulan:'per tanggal',tahun:'per bulan'}[rM])+an:'';
+  $('rBk').innerHTML=bkr.length?bkr.map(b=>`<div class="r${rM==='tahun'?' ac':''}" ${rM==='tahun'?`data-bm="${b.s}"`:''}><div class="nm">${esc(b.f)}</div><div class="v"><div><span>Masuk (Rp)</span><b style="color:var(--in)">${nb(b.i)}</b></div><div><span>Keluar (Rp)</span><b style="color:var(--out)">${nb(b.o)}</b></div><div><span>Selisih (Rp)</span><b class="${b.i-b.o<0?'neg':''}">${b.i-b.o<0?'−':''}${nb(Math.abs(b.i-b.o))}</b></div></div></div>`).join('')+`<div class="r tt"><div class="nm">Total ${esc(r.l)}</div><div class="v"><div><span>Masuk (Rp)</span><b style="color:var(--in)">${nb(I)}</b></div><div><span>Keluar (Rp)</span><b style="color:var(--out)">${nb(O)}</b></div><div><span>Selisih (Rp)</span><b class="${I-O<0?'neg':''}">${I-O<0?'−':''}${nb(Math.abs(I-O))}</b></div></div></div>`+(rM==='tahun'?'<p class="hint">Ketuk bulan untuk membuka laporan bulan itu.</p>':''):'';
   const grp=(t,f)=>{const m={};l.filter(x=>t?x.t===t:x.t!=='tf'&&x.t!=='inv').forEach(x=>{const k=f(x);m[k]=(m[k]||0)+x.n});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
   const bars=(arr,c,emp)=>{const T=arr.reduce((a,x)=>a+x[1],0);return arr.length?arr.map(([k,v])=>`<div class="b"><div class="t"><span>${esc(k)} <span style="color:var(--mut)">${Math.round(v/T*100)}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${c}"></div></div></div>`).join(''):`<div class="empty">${emp}</div>`};
   donut('o',grp('out',x=>x.k),r.l,l.filter(x=>x.t==='out'));donut('i',grp('in',x=>x.k),r.l,l.filter(x=>x.t==='in'));
