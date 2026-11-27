@@ -113,6 +113,16 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .det .hd{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .det .hd b{font-size:17px}
 .top1.in{background:light-dark(#e3f4ea,#21382b)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rkl .r{padding:10px;border-radius:12px;border-bottom:1px dashed var(--ln)}
+.rkl .r.ac{cursor:pointer}.rkl .r.ac:hover,.rkl .r.on{background:var(--soft)}.rkl .r.on{outline:2px solid var(--lav)}
+.rkl .nm{font-weight:700}.rkl .ex{font-size:12px;color:var(--mut);font-weight:600}
+.rkl .v{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:4px}
+.rkl .v span{display:block;font-size:11px;color:var(--mut);font-weight:700}
+.rkl .v b{font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;display:block}
+.rkl .gp{margin-top:12px;background:var(--soft);border-bottom:0}.rkl .gp .nm{color:var(--pri);font-weight:900}
+.rkl .tt{margin-top:10px;border-top:2px solid var(--ink);border-bottom:0;border-radius:0}.rkl .tt .nm{font-weight:900}
+@media(max-width:380px){.rkl .v b{font-size:12.5px}}
 .top1{background:var(--pink);border-radius:14px;padding:10px 14px;font-size:15px;margin-top:4px}
 @media(max-width:600px){.dn{grid-template-columns:1fr}.dn svg{max-width:200px}}
 .meter{height:18px;background:var(--soft);border-radius:18px;overflow:hidden;margin:10px 0 4px}
@@ -212,10 +222,13 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 </div>
 </div>
 <p class="hint" style="text-align:center">Ketuk bagian donat atau nama kategori untuk melihat rinciannya.</p>
-<div class="grid two">
-  <div class="pn"><h2>Pengeluaran per sumber dana</h2><div class="bars" id="rAk"></div></div>
-  <div class="pn"><h2>Rincian transaksi</h2><div id="rList"></div></div>
+<div class="pn" style="margin-top:16px">
+  <h2 id="rkH">Rekap per dompet</h2>
+  <p class="hint" style="margin-top:-6px">Masuk/keluar = pemasukan & pengeluaran. Saldo ± = perubahan saldo, sudah termasuk pindah dana & investasi. Ketuk baris untuk rincian.</p>
+  <div class="rkl" id="rkT"></div>
+  <div id="rkDet"></div>
 </div>
+<div class="pn" style="margin-top:16px"><h2>Rincian transaksi</h2><div id="rList"></div></div>
 </section>
 
 <section id="v-dompet" hidden>
@@ -555,6 +568,26 @@ function detail(p){const c=dctx[p];if(!c)return;const k=dsel[p],svg=$(p+'Dn');
 document.querySelectorAll('.dn').forEach(w=>w.addEventListener('click',e=>{const t=e.target.closest('[data-k]');if(!t)return;const p=w.dataset.p;
   dsel[p]=dsel[p]===t.dataset.k?'':t.dataset.k;detail(p);if(dsel[p])$(p+'Det').scrollIntoView({behavior:'smooth',block:'nearest'})}));
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cl]');if(!b)return;dsel[b.dataset.cl]='';detail(b.dataset.cl)});
+let rkSel='',rkL=[];
+function rekap(l,lbl){rkL=l;$('rkH').textContent='Rekap per dompet · '+lbl;
+  const st=id=>{const o={i:0,o:0,ti:0,to:0,v:0,n:0};l.forEach(t=>{if(t.a===id){o.n++;if(t.t==='in')o.i+=t.n;else if(t.t==='out')o.o+=t.n;else if(t.t==='tf')o.to+=t.n;else if(t.t==='inv')o.v+=t.n}if(t.t==='tf'&&t.b===id){o.n++;o.ti+=t.n}});o.d=o.i-o.o+o.ti-o.to-o.v;return o};
+  const nb=v=>Math.round(Math.abs(v)).toLocaleString('id-ID'),mn=v=>v?nb(v):'–',dl=v=>`<b class="${v<0?'neg':''}" style="${v>0?'color:var(--in)':''}">${v>0?'+':v<0?'−':''}${v?nb(v):'–'}</b>`;
+  const vals=(i,o,d)=>`<div class="v"><div><span>Masuk (Rp)</span><b style="color:var(--in)">${mn(i)}</b></div><div><span>Keluar (Rp)</span><b style="color:var(--out)">${mn(o)}</b></div><div><span>Saldo ± (Rp)</span>${d==null?'<b>–</b>':dl(d)}</div></div>`;
+  let html='',G={i:0,o:0,d:0},any=false;
+  ['kas','bank','ewallet'].forEach(j=>{const rows=K.akun.filter(a=>a.j===j).map(a=>[a,st(a.id)]).filter(x=>x[1].n);if(!rows.length)return;any=true;
+    const S={i:0,o:0,d:0};rows.forEach(([,o])=>{S.i+=o.i;S.o+=o.o;S.d+=o.d});G.i+=S.i;G.o+=S.o;G.d+=S.d;
+    html+=`<div class="r gp"><div class="nm">${AJ[j]}</div>${vals(S.i,S.o,S.d)}</div>`;
+    html+=rows.map(([a,o])=>{const ex=[o.ti?'pindah masuk '+rp(o.ti):'',o.to?'pindah keluar '+rp(o.to):'',o.v?'investasi '+rp(o.v):''].filter(Boolean).join(' · ');
+      return `<div class="r ac${rkSel===a.id?' on':''}" data-rk="${esc(a.id)}"><div class="nm">${esc(a.nm)}</div>${ex?`<div class="ex">${ex}</div>`:''}${vals(o.i,o.o,o.d)}</div>`}).join('')});
+  const un=l.filter(t=>(t.t==='in'||t.t==='out')&&!t.a);if(un.length){any=true;const ui=tot(un,'in'),uo=tot(un,'out');G.i+=ui;G.o+=uo;html+=`<div class="r gp"><div class="nm">Belum pilih dompet</div>${vals(ui,uo,null)}</div>`}
+  html+=any?`<div class="r tt"><div class="nm">Total semua dompet</div>${vals(G.i,G.o,G.d)}</div>`:'<div class="empty">Belum ada transaksi di periode ini.</div>';
+  $('rkT').innerHTML=html;rkDetail()}
+function rkDetail(){const a=K.akun.find(x=>x.id===rkSel);if(!a){$('rkDet').innerHTML='';return}
+  const l=rkL.filter(t=>t.a===a.id||(t.t==='tf'&&t.b===a.id)).sort((x,y)=>y.d.localeCompare(x.d)),byD={};l.forEach(t=>(byD[t.d]||=[]).push(t));
+  $('rkDet').innerHTML=`<div class="det"><div class="hd"><b>Rincian ${esc(a.nm)}</b><button class="mini" type="button" data-rkc="1">Tutup ✕</button></div><div class="sum" style="margin:4px 0 6px"><span>${l.length} transaksi</span><span>Saldo sekarang <b>${rp(saldo(a.id))}</b></span></div>${Object.keys(byD).map(d=>`<div class="day">${fD(d)}</div>`+byD[d].map(txRow).join('')).join('')}</div>`}
+$('rkT').onclick=e=>{const r=e.target.closest('[data-rk]');if(!r)return;rkSel=rkSel===r.dataset.rk?'':r.dataset.rk;
+  $('rkT').querySelectorAll('[data-rk]').forEach(x=>x.classList.toggle('on',x.dataset.rk===rkSel));rkDetail();if(rkSel)$('rkDet').scrollIntoView({behavior:'smooth',block:'nearest'})};
+document.addEventListener('click',e=>{if(e.target.closest('[data-rkc]')){rkSel='';$('rkT').querySelectorAll('.on').forEach(x=>x.classList.remove('on'));rkDetail()}});
 function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1)),pl=inR(pr.s,pr.e);
   $('rMode').innerHTML=MODES.map(([m,n])=>`<button class="chip${m===rM?' on':''}" data-m="${m}">${n}</button>`).join('');
   $('rLbl').textContent=r.l;
@@ -567,7 +600,7 @@ function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1))
   const grp=(t,f)=>{const m={};l.filter(x=>t?x.t===t:x.t!=='tf'&&x.t!=='inv').forEach(x=>{const k=f(x);m[k]=(m[k]||0)+x.n});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
   const bars=(arr,c,emp)=>{const T=arr.reduce((a,x)=>a+x[1],0);return arr.length?arr.map(([k,v])=>`<div class="b"><div class="t"><span>${esc(k)} <span style="color:var(--mut)">${Math.round(v/T*100)}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${c}"></div></div></div>`).join(''):`<div class="empty">${emp}</div>`};
   donut('o',grp('out',x=>x.k),r.l,l.filter(x=>x.t==='out'));donut('i',grp('in',x=>x.k),r.l,l.filter(x=>x.t==='in'));
-  $('rAk').innerHTML=bars(grp('out',x=>x.a?akn(x.a):'Belum dipilih'),'var(--gold)','Belum ada pengeluaran.');
+  rekap(l,r.l);
   const byD={};l.forEach(x=>(byD[x.d]||=[]).push(x));
   $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(txRow).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>'}
 const svg=$('rCh');
