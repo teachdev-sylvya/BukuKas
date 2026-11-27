@@ -52,8 +52,10 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);ba
 textarea{min-height:100px;font-size:14px}
 input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--pri2);outline-offset:2px}
 .big{font-size:30px;font-weight:900;padding:10px 14px;text-align:right}
-.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;background:var(--soft);padding:5px;border-radius:16px}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;background:var(--soft);padding:5px;border-radius:16px}
 .seg button{border:0;font:inherit;font-size:15px;font-weight:800;padding:10px 4px;min-height:44px;border-radius:12px;background:none;color:var(--mut);cursor:pointer}
+.seg button.on[data-t=inv]{background:var(--gold);color:#fff}
+@media(max-width:520px){.seg{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .seg button.on[data-t=out]{background:var(--out);color:#fff}.seg button.on[data-t=tf]{background:var(--pri);color:#fff}.seg button.on[data-t=in]{background:var(--in);color:#fff}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1.5px solid var(--ln);background:var(--pn);color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:7px 13px;min-height:40px;border-radius:999px;cursor:pointer}
@@ -144,7 +146,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 <div class="grid two">
   <form class="pn" id="fTx" autocomplete="off">
     <h2 id="fTxH">Catat transaksi</h2>
-    <div class="seg" id="tSeg"><button type="button" data-t="out" class="on">Pengeluaran</button><button type="button" data-t="in">Pemasukan</button><button type="button" data-t="tf">Pindah</button></div>
+    <div class="seg" id="tSeg"><button type="button" data-t="out" class="on">Pengeluaran</button><button type="button" data-t="in">Pemasukan</button><button type="button" data-t="tf">Pindah</button><button type="button" data-t="inv">Investasi</button></div>
     <label for="tN">Nominal (Rp)</label>
     <input id="tN" class="big" inputmode="numeric" placeholder="0" required>
     <label for="tC">Catatan</label>
@@ -153,6 +155,16 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
       <p class="hint">Kategori terpilih otomatis dari catatan. Ketuk untuk mengganti.</p>
       <label>Kategori</label><div class="chips" id="tK"></div>
       <label id="tAL">Sumber dana</label><div class="chips" id="tA"></div>
+    </div>
+    <div id="invWrap" hidden>
+      <label>Jenis investasi</label><div class="chips" id="tIJ"></div>
+      <div id="tIGW"><div class="row2">
+        <div><label for="tIG">Berat (gram)</label><input id="tIG" inputmode="decimal" placeholder="0"></div>
+        <div id="tIKW"><label for="tIK">Kadar</label><select id="tIK"><option value="24">24 karat</option><option value="22">22 karat</option><option value="18">18 karat</option><option value="17">17 karat</option><option value="16">16 karat</option><option value="8">8 karat</option></select></div>
+      </div></div>
+      <label>Sumber dana</label><div class="chips" id="tIA"></div>
+      <label class="chk" style="margin-top:12px"><input type="checkbox" id="tIZ" checked><span>Masuk hitungan zakat mal</span></label>
+      <p class="hint">Uang berpindah dari rekening menjadi aset, jadi tidak dihitung sebagai pengeluaran dan kekayaan bersih tidak berkurang. Asetnya otomatis muncul di tab Aset.</p>
     </div>
     <div id="tfWrap" hidden>
       <label>Dari</label><div class="chips" id="tFrom"></div>
@@ -247,7 +259,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
       <div><label for="aS">Dimiliki sejak</label><input id="aS" type="date"></div>
     </div>
     <div id="aNWrap"><label for="aN">Nilai sekarang (Rp)</label><input id="aN" inputmode="numeric" placeholder="0"></div>
-    <div id="aGWrap" hidden><label for="aG">Berat (gram)</label><input id="aG" inputmode="decimal" placeholder="0"><p class="hint" id="aGHint"></p></div>
+    <div id="aGWrap" hidden><div class="row2"><div><label for="aG">Berat (gram)</label><input id="aG" inputmode="decimal" placeholder="0"></div><div id="aKW"><label for="aK">Kadar</label><select id="aK"><option value="24">24 karat</option><option value="22">22 karat</option><option value="18">18 karat</option><option value="17">17 karat</option><option value="16">16 karat</option><option value="8">8 karat</option></select></div></div><p class="hint" id="aGHint"></p></div>
     <label class="chk"><input type="checkbox" id="aZ"><span id="aZL">Masuk hitungan zakat mal</span></label>
     <button class="btn wide">Simpan aset</button>
     <button type="button" class="btn ghost wide" id="aCancel" hidden>Batal ubah</button>
@@ -332,8 +344,8 @@ const uid0=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const KAT={out:[['Makan & minum','makan minum kopi jajan sarapan resto gofood grabfood shopeefood bakso nasi snack'],['Belanja rumah','beras sayur pasar belanja minyak sabun indomaret alfamart galon gas lpg telur ikan ayam daging'],['Transportasi','bensin bbm pertalite pertamax parkir tol ojek gojek krl busway servis motor mobil'],['Tagihan','listrik pln pdam token iuran ipl bpjs wifi indihome sampah'],['Pulsa & internet','pulsa kuota data'],['Pendidikan & kuliah','spp kuliah ukt buku fotokopi print makalah sekolah les seminar'],['Kesehatan','obat dokter klinik apotek vitamin rumah sakit'],['Anak','anak susu popok mainan saku'],['Nafkah orang tua','ortu orang tua mertua ibu bapak mama papa umi abi'],['Sedekah & infaq','sedekah infaq infak wakaf donasi masjid kajian'],['Zakat','zakat'],['Olahraga','gym zumba trainer pt'],['Cicilan & hutang','cicilan kredit angsuran paylater kpr hutang'],['Biaya admin bank','admin biaya transfer bulanan materai'],['Pajak bank','pajak pph'],['Tip','tip tips tipping'],['Pakaian & pribadi','baju gamis jilbab kerudung khimar skincare salon sepatu tas'],['Lainnya','']],
  in:[['Gaji','gaji'],['Tunjangan','tunjangan sertifikasi tpg tpp tukin'],['Honor','honor narasumber mentor pengawas panitia lembur'],['Usaha / jualan','jualan penjualan usaha order laba'],['Hadiah / pemberian','hadiah thr kado dikasih pemberian'],['Bunga bank','bunga giro'],['Investasi / bagi hasil','bagi hasil dividen investasi emas'],['Lainnya','']]};
 const MET=['Tunai','Transfer bank','QRIS','E-wallet'];
-const JEN=[['kas','Uang tunai',1],['bank','Tabungan bank',1],['ewallet','E-wallet',1],['emas','Emas / logam mulia',1],['haji','Tabungan haji',1],['invest','Deposito / investasi',1],['piutang','Piutang lancar',1],['properti','Rumah / tanah',0],['kendaraan','Kendaraan',0],['lain','Lainnya',0],['hutang','Hutang / cicilan',1]];
-const jn=j=>j==='dompet'?'Rekening & dompet':(JEN.find(x=>x[0]===j)||JEN[9])[1];
+const JEN=[['kas','Uang tunai',1],['bank','Tabungan bank',1],['ewallet','E-wallet',1],['emas','Emas / logam mulia',1],['perhiasan','Perhiasan emas',1],['haji','Tabungan haji',1],['invest','Deposito / investasi',1],['piutang','Piutang lancar',1],['properti','Rumah / tanah',0],['kendaraan','Kendaraan',0],['lain','Lainnya',0],['hutang','Hutang / cicilan',1]];
+const jn=j=>j==='dompet'?'Rekening & dompet':(JEN.find(x=>x[0]===j)||JEN.find(x=>x[0]==='lain'))[1];
 const AKD=[['tunai','Tunai (cash)','kas'],['bjb','BJB','bank'],['mandiri','Mandiri','bank'],['bca','BCA','bank'],['ovo','OVO','ewallet'],['shopeepay','ShopeePay','ewallet'],['gopay','GoPay','ewallet'],['isaku','i.saku','ewallet']].map(([id,nm,j])=>({id,nm,j,awal:0,tgl:'',z:true}));
 const AJ={kas:'Uang tunai',bank:'Rekening bank',ewallet:'E-wallet'},AM={kas:'Tunai',bank:'Transfer bank',ewallet:'E-wallet'};
 
@@ -426,20 +438,25 @@ function show(v){view=v;document.querySelectorAll('nav button').forEach(b=>b.set
   document.querySelectorAll('section').forEach(s=>s.hidden=s.id!=='v-'+v);try{localStorage.setItem(LS+'-tab',v)}catch(e){};render()}
 
 /* ---------- catat ---------- */
-let fT='out',fK='',fKman=false,fM='Tunai',editId=null,fA='',fFrom='',fTo='';
+let fT='out',fK='',fKman=false,fM='Tunai',editId=null,fA='',fFrom='',fTo='',fIJ='emas';
+const IJ=[['emas','Logam mulia'],['perhiasan','Perhiasan emas'],['invest','Deposito / investasi lain']];
 $('tD').value=today();fmtIn($('tN'));fmtIn($('tAdm'));
 const akChips=(sel,attr,skip)=>K.akun.filter(a=>a.id!==skip).map(a=>{const v=saldo(a.id);return `<button type="button" class="chip${a.id===sel?' on':''}" data-${attr}="${esc(a.id)}">${esc(a.nm)} <small class="${v<0?'neg':''}">${sh(v)}</small></button>`}).join('')||'<span class="hint">Tambahkan rekening di tab Dompet.</span>';
-function guess(){if(fKman||fT==='tf')return;const c=' '+$('tC').value.toLowerCase()+' ';
+function guess(){if(fKman||fT==='tf'||fT==='inv')return;const c=' '+$('tC').value.toLowerCase()+' ';
   const hit=KAT[fT].find(([n,w])=>w&&w.split(' ').some(x=>c.includes(x.length<4?' '+x+' ':x)));fK=hit?hit[0]:'';drawChips()}
 function drawChips(){
   $('tSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===fT));
   $('tK').innerHTML=(KAT[fT]||[]).map(([n])=>`<button type="button" class="chip${n===fK?' on':''}" data-k="${esc(n)}">${esc(n)}</button>`).join('');
-  const tf=fT==='tf';$('ioWrap').hidden=tf;$('tfWrap').hidden=!tf;
+  const tf=fT==='tf',inv=fT==='inv';$('ioWrap').hidden=tf||inv;$('tfWrap').hidden=!tf;$('invWrap').hidden=!inv;
+  $('tIJ').innerHTML=IJ.map(([k,n])=>`<button type="button" class="chip${k===fIJ?' on':''}" data-ij="${k}">${n}</button>`).join('');
+  $('tIGW').hidden=fIJ==='invest';$('tIKW').hidden=fIJ!=='perhiasan';
   if(!K.akun.some(a=>a.id===fA))fA=(K.akun.find(a=>a.id===K.set.lastA)||K.akun[0]||{}).id||'';
   $('tAL').textContent=fT==='in'?'Masuk ke':'Sumber dana';$('tA').innerHTML=akChips(fA,'a');
-  $('tFrom').innerHTML=akChips(fFrom,'fr');$('tTo').innerHTML=akChips(fTo,'to',fFrom);
-  $('tSave').style.background=tf?'var(--pri)':fT==='in'?'var(--in)':'var(--out)';
-  $('tSave').textContent=(editId?'Simpan perubahan ':'Simpan ')+(tf?'pemindahan':fT==='in'?'pemasukan':'pengeluaran')}
+  $('tIA').innerHTML=akChips(fA,'ia');$('tFrom').innerHTML=akChips(fFrom,'fr');$('tTo').innerHTML=akChips(fTo,'to',fFrom);
+  $('tSave').style.background=inv?'var(--gold)':tf?'var(--pri)':fT==='in'?'var(--in)':'var(--out)';
+  $('tSave').textContent=(editId?'Simpan perubahan ':'Simpan ')+(inv?'investasi':tf?'pemindahan':fT==='in'?'pemasukan':'pengeluaran')}
+$('tIJ').onclick=e=>{const b=e.target.closest('button');if(!b)return;fIJ=b.dataset.ij;drawChips()};
+$('tIA').onclick=e=>{const b=e.target.closest('button');if(!b)return;fA=b.dataset.ia;drawChips()};
 $('tA').onclick=e=>{const b=e.target.closest('button');if(!b)return;fA=b.dataset.a;const a=K.akun.find(x=>x.id===fA);if(a)fM=AM[a.j]||fM;drawChips()};
 $('tFrom').onclick=e=>{const b=e.target.closest('button');if(!b)return;fFrom=b.dataset.fr;if(fTo===fFrom)fTo='';drawChips()};
 $('tTo').onclick=e=>{const b=e.target.closest('button');if(!b)return;fTo=b.dataset.to;drawChips()};
@@ -447,13 +464,17 @@ $('tSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;fT=b.datas
 $('tK').onclick=e=>{const b=e.target.closest('button');if(!b)return;fK=b.dataset.k;fKman=true;drawChips()};
 
 $('tC').oninput=guess;$('tD').onchange=()=>{$('tX').checked=($('tD').value||today())<today();render()};
-function resetTx(){$('tX').checked=($('tD').value||today())<today();editId=null;$('tN').value='';$('tC').value='';$('tAdm').value='';fFrom='';fTo='';if(fT==='tf')fT='out';fKman=false;fK='';$('fTxH').textContent='Catat transaksi';$('tCancel').hidden=true;$('fTx').classList.remove('edit-on');drawChips()}
+function resetTx(){$('tIG').value='';$('tIZ').checked=true;if(fT==='inv')fT='out';$('tX').checked=($('tD').value||today())<today();editId=null;$('tN').value='';$('tC').value='';$('tAdm').value='';fFrom='';fTo='';if(fT==='tf')fT='out';fKman=false;fK='';$('fTxH').textContent='Catat transaksi';$('tCancel').hidden=true;$('fTx').classList.remove('edit-on');drawChips()}
 $('tCancel').onclick=resetTx;
 function removeTx(id){const root=(allTx().find(x=>x.id===id)||{}).ln||id;
   Object.keys(K.tx).forEach(m=>{K.tx[m]=K.tx[m].filter(x=>x.id!==root&&x.ln!==root);if(!K.tx[m].length)delete K.tx[m]})}
 $('fTx').onsubmit=e=>{e.preventDefault();const n=num($('tN').value);if(!n){$('tN').focus();return}
   const d=$('tD').value||today(),c=$('tC').value.trim().slice(0,120),id=editId||uid0(),add=[],x=$('tX').checked;let msg,chk;
-  if(fT==='tf'){if(!fFrom||!fTo||fFrom===fTo){toast('Pilih rekening asal dan tujuan',true);return}
+  if(fT==='inv'){if(!fA){toast('Pilih sumber dana dulu',true);return}
+    const g=parseFloat(String($('tIG').value).replace(',','.'))||0;if(fIJ!=='invest'&&!g){toast('Isi beratnya (gram)',true);$('tIG').focus();return}
+    add.push({id,d,t:'inv',n,a:fA,c,j:fIJ,g:fIJ==='invest'?0:g,kr:fIJ==='perhiasan'?+$('tIK').value:24,z:$('tIZ').checked});
+    msg=(editId?'Investasi diubah: ':'Investasi ')+rp(n)+' tercatat sebagai aset';chk=fA}
+  else if(fT==='tf'){if(!fFrom||!fTo||fFrom===fTo){toast('Pilih rekening asal dan tujuan',true);return}
     const adm=num($('tAdm').value);add.push({id,d,t:'tf',n,a:fFrom,b:fTo,adm,c});
     if(adm)add.push({id:id+'-adm',d,t:'out',n:adm,k:'Biaya admin bank',m:'Transfer bank',a:fFrom,c:'Biaya admin pindah dana',ln:id});
     msg=(editId?'Pemindahan diubah: ':'Dipindah ')+rp(n)+' '+akn(fFrom)+' → '+akn(fTo);chk=fFrom}
@@ -467,11 +488,15 @@ $('fTx').onsubmit=e=>{e.preventDefault();const n=num($('tN').value);if(!n){$('tN
 function editTx(id){let t=allTx().find(x=>x.id===id);if(!t)return;if(t.ln)t=allTx().find(x=>x.id===t.ln)||t;
   if(view!=='catat')go('catat');editId=t.id;fT=t.t;fK=t.k||'';fKman=true;fM=t.m||fM;fA=t.a||fA;
   $('tX').checked=!!t.x;
+  if(t.t==='inv'){fIJ=t.j||'emas';$('tIG').value=t.g||'';$('tIK').value=String(t.kr||24);$('tIZ').checked=t.z!==false}
   if(t.t==='tf'){fFrom=t.a;fTo=t.b;$('tAdm').value=t.adm?t.adm.toLocaleString('id-ID'):''}
   $('tN').value=t.n.toLocaleString('id-ID');$('tC').value=t.c||'';$('tD').value=t.d;$('fTxH').textContent='Ubah transaksi';$('tCancel').hidden=false;
   $('fTx').classList.add('edit-on');drawChips();render();$('fTx').scrollIntoView({behavior:'smooth',block:'start'})}
 function delTx(id){if(!allTx().some(x=>x.id===id))return;mutate('Transaksi dihapus',()=>removeTx(id))}
-const txRow=t=>t.t==='tf'?`<div class="tx"><div><div class="k">⇄ ${esc(akn(t.a))} → ${esc(akn(t.b))}</div><div class="s">Pindah dana${t.adm?' · admin '+rp(t.adm):''}${t.c?' · '+esc(t.c):''}${t.x?' · tidak mengubah saldo':''}</div></div>
+const ijn=j=>(IJ.find(x=>x[0]===j)||IJ[2])[1];
+const txRow=t=>t.t==='inv'?`<div class="tx"><div><div class="k">◆ ${esc(t.c||ijn(t.j))}${t.g?' '+esc(t.g)+' g':''}</div><div class="s">Investasi · ${esc(ijn(t.j))}${t.j==='perhiasan'?' '+esc(t.kr)+'K':''} · ${esc(akn(t.a))}${t.x?' · tidak mengubah saldo':''}</div></div>
+ <div class="amt" style="color:var(--gold)">${rp(t.n)}</div>
+ <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:t.t==='tf'?`<div class="tx"><div><div class="k">⇄ ${esc(akn(t.a))} → ${esc(akn(t.b))}</div><div class="s">Pindah dana${t.adm?' · admin '+rp(t.adm):''}${t.c?' · '+esc(t.c):''}${t.x?' · tidak mengubah saldo':''}</div></div>
  <div class="amt" style="color:var(--pri)">${rp(t.n)}</div>
  <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:`<div class="tx"><div><div class="k">${esc(t.c||t.k)}</div><div class="s">${esc(t.k)} · ${esc(t.a?akn(t.a):t.m||'')}${t.x?' · tidak mengubah saldo':''}</div></div>
  <div class="amt ${t.t==='in'?'in':'out'}">${t.t==='in'?'+':'−'}${rp(t.n)}</div>
@@ -535,11 +560,11 @@ function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1))
   $('rLbl').textContent=r.l;
   const I=tot(l,'in'),O=tot(l,'out');
   $('rKpi').innerHTML=`<div><span>Pemasukan</span><b style="color:var(--in)">${rp(I)}</b>${chg(I,tot(pl,'in'),r.u)}</div>
-   <div><span>Pengeluaran</span><b style="color:var(--out)">${rp(O)}</b>${chg(O,tot(pl,'out'),r.u)}</div>
+   <div><span>Pengeluaran</span><b style="color:var(--out)">${rp(O)}</b>${chg(O,tot(pl,'out'),r.u)}${tot(l,'inv')?`<small style="display:block;color:var(--gold)">+ investasi ${rp(tot(l,'inv'))} (jadi aset)</small>`:''}</div>
    <div><span>Selisih</span><b>${rp(I-O)}</b><small>${I?Math.round(O/I*100)+'% pemasukan terpakai':l.length+' transaksi'}</small></div>`;
   $('rChH').textContent={hari:'7 hari terakhir',minggu:'Per hari dalam pekan',bulan:'Per tanggal',tahun:'Per bulan'}[rM];
   bk=buckets(r);draw();$('rCap').textContent='Ketuk batang untuk melihat angkanya.';
-  const grp=(t,f)=>{const m={};l.filter(x=>t?x.t===t:x.t!=='tf').forEach(x=>{const k=f(x);m[k]=(m[k]||0)+x.n});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+  const grp=(t,f)=>{const m={};l.filter(x=>t?x.t===t:x.t!=='tf'&&x.t!=='inv').forEach(x=>{const k=f(x);m[k]=(m[k]||0)+x.n});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
   const bars=(arr,c,emp)=>{const T=arr.reduce((a,x)=>a+x[1],0);return arr.length?arr.map(([k,v])=>`<div class="b"><div class="t"><span>${esc(k)} <span style="color:var(--mut)">${Math.round(v/T*100)}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${c}"></div></div></div>`).join(''):`<div class="empty">${emp}</div>`};
   donut('o',grp('out',x=>x.k),r.l,l.filter(x=>x.t==='out'));donut('i',grp('in',x=>x.k),r.l,l.filter(x=>x.t==='in'));
   $('rAk').innerHTML=bars(grp('out',x=>x.a?akn(x.a):'Belum dipilih'),'var(--gold)','Belum ada pengeluaran.');
@@ -563,27 +588,29 @@ const ro=new ResizeObserver(draw);ro.observe(svg);
 /* ---------- aset ---------- */
 let aEdit=null;
 $('aJ').innerHTML=JEN.map(([k,n])=>`<option value="${k}">${n}</option>`).join('');fmtIn($('aN'));
-const aVal=a=>a.j==='emas'?(+a.g||0)*(K.set.emas||0):(+a.n||0);
-function aForm(){const j=$('aJ').value;$('aGWrap').hidden=j!=='emas';$('aNWrap').hidden=j==='emas';
+const aVal=a=>a.j==='emas'?(+a.g||0)*(K.set.emas||0):a.j==='perhiasan'?(+a.g||0)*((+a.kr||24)/24)*(K.set.emas||0):(+a.n||0);
+const invAset=()=>allTx().filter(t=>t.t==='inv').map(t=>({id:'inv-'+t.id,tx:t.id,nm:t.c||ijn(t.j),j:t.j||'invest',g:t.g,kr:t.kr,n:t.n,s:t.d,z:t.z!==false}));
+const allAset=()=>[...K.aset,...invAset()];
+function aForm(){const j=$('aJ').value,gr=j==='emas'||j==='perhiasan';$('aGWrap').hidden=!gr;$('aNWrap').hidden=gr;$('aKW').hidden=j!=='perhiasan';
   $('aZL').textContent=j==='hutang'?'Hutang jatuh tempo (dikurangkan dari zakat)':'Masuk hitungan zakat mal';
-  $('aGHint').textContent='Nilai dihitung dari harga emas di tab Zakat: '+rp(K.set.emas||0)+'/gram'}
+  $('aGHint').textContent='Nilai dihitung dari harga emas di tab Zakat: '+rp(K.set.emas||0)+'/gram'+(j==='perhiasan'?' × kadar/24':'')}
 $('aJ').onchange=()=>{$('aZ').checked=!!(JEN.find(x=>x[0]===$('aJ').value)||[])[2];aForm()};
 function resetAs(){aEdit=null;$('fAs').reset();$('aJ').value='bank';$('aZ').checked=true;$('fAsH').textContent='Tambah aset';$('aCancel').hidden=true;$('fAs').classList.remove('edit-on');aForm()}
 $('aCancel').onclick=resetAs;
 $('fAs').onsubmit=e=>{e.preventDefault();const j=$('aJ').value;
-  const a={id:aEdit||uid0(),nm:$('aNm').value.trim().slice(0,80),j,n:num($('aN').value),g:parseFloat(String($('aG').value).replace(',','.'))||0,s:$('aS').value||'',z:$('aZ').checked};
+  const a={id:aEdit||uid0(),nm:$('aNm').value.trim().slice(0,80),j,n:num($('aN').value),g:parseFloat(String($('aG').value).replace(',','.'))||0,kr:+$('aK').value||24,s:$('aS').value||'',z:$('aZ').checked};
   mutate(aEdit?'Aset diubah':'Aset ditambahkan',()=>{const i=K.aset.findIndex(x=>x.id===a.id);if(i>=0)K.aset[i]=a;else K.aset.push(a)});resetAs()};
-function editAs(id){const a=K.aset.find(x=>x.id===id);if(!a)return;aEdit=id;$('aNm').value=a.nm;$('aJ').value=a.j;$('aN').value=a.n?(+a.n).toLocaleString('id-ID'):'';$('aG').value=a.g||'';$('aS').value=a.s||'';$('aZ').checked=!!a.z;
+function editAs(id){const a=K.aset.find(x=>x.id===id);if(!a)return;aEdit=id;$('aNm').value=a.nm;$('aJ').value=a.j;$('aN').value=a.n?(+a.n).toLocaleString('id-ID'):'';$('aG').value=a.g||'';$('aK').value=String(a.kr||24);$('aS').value=a.s||'';$('aZ').checked=!!a.z;
   $('fAsH').textContent='Ubah aset';$('aCancel').hidden=false;$('fAs').classList.add('edit-on');aForm();$('fAs').scrollIntoView({behavior:'smooth',block:'start'})}
 function delAs(id){mutate('Aset dihapus',()=>{K.aset=K.aset.filter(x=>x.id!==id)})}
-function renderAset(){const as=K.aset.filter(a=>a.j!=='hutang'),hu=K.aset.filter(a=>a.j==='hutang');
+function renderAset(){const AA=allAset(),as=AA.filter(a=>a.j!=='hutang'),hu=K.aset.filter(a=>a.j==='hutang');
   const TD=totSaldo(),TA=as.reduce((s,a)=>s+aVal(a),0)+TD,TH=hu.reduce((s,a)=>s+aVal(a),0);
   $('aNet').textContent=rp(TA-TH);$('aSum').innerHTML=`<span>Total aset <b>${rp(TA)}</b></span><span>Hutang <b style="color:var(--out)">${rp(TH)}</b></span>`;
   const g={};if(TD)g.dompet=TD;as.forEach(a=>g[a.j]=(g[a.j]||0)+aVal(a));const arr=Object.entries(g).sort((a,b)=>b[1]-a[1]);
-  $('aBars').innerHTML=arr.length&&arr[0][1]?arr.map(([j,v])=>`<div class="b"><div class="t"><span>${esc(jn(j))} <span style="color:var(--mut)">${TA?Math.round(v/TA*100):0}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${j==='emas'?'var(--gold)':'var(--pri)'}"></div></div></div>`).join(''):'<div class="empty">Tambahkan aset pertama lewat formulir.</div>';
+  $('aBars').innerHTML=arr.length&&arr[0][1]?arr.map(([j,v])=>`<div class="b"><div class="t"><span>${esc(jn(j))} <span style="color:var(--mut)">${TA?Math.round(v/TA*100):0}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${j==='emas'||j==='perhiasan'?'var(--gold)':'var(--pri)'}"></div></div></div>`).join(''):'<div class="empty">Tambahkan aset pertama lewat formulir.</div>';
   const order=JEN.map(x=>x[0]);
-  $('aList').innerHTML=`<div class="tx"><div><div class="k">Rekening &amp; dompet (${K.akun.length})</div><div class="s">Otomatis dari tab Dompet</div></div><div class="amt">${rp(TD)}</div><div><button class="mini" type="button" onclick="this.dispatchEvent(new CustomEvent('gotab',{bubbles:true,detail:'dompet'}))">Lihat</button></div></div>`+(K.aset.length?K.aset.slice().sort((a,b)=>order.indexOf(a.j)-order.indexOf(b.j)).map(a=>`<div class="tx"><div><div class="k">${esc(a.nm||jn(a.j))}</div><div class="s">${esc(jn(a.j))}${a.j==='emas'?' · '+esc(a.g)+' g':''}${a.s?' · sejak '+esc(fD(a.s)):''}${a.z?(a.j==='hutang'?' · dikurangkan':' · kena zakat'):''}</div></div>
-   <div class="amt ${a.j==='hutang'?'out':''}">${a.j==='hutang'?'−':''}${rp(aVal(a))}</div><div><button class="mini" data-ae="${esc(a.id)}">Ubah</button><button class="mini" data-ax="${esc(a.id)}">Hapus</button></div></div>`).join(''):'<div class="empty">Belum ada aset lain. Contoh: logam mulia, tabungan haji, rumah.</div>')}
+  $('aList').innerHTML=`<div class="tx"><div><div class="k">Rekening &amp; dompet (${K.akun.length})</div><div class="s">Otomatis dari tab Dompet</div></div><div class="amt">${rp(TD)}</div><div><button class="mini" type="button" onclick="this.dispatchEvent(new CustomEvent('gotab',{bubbles:true,detail:'dompet'}))">Lihat</button></div></div>`+(AA.length?AA.slice().sort((a,b)=>order.indexOf(a.j)-order.indexOf(b.j)).map(a=>`<div class="tx"><div><div class="k">${esc(a.nm||jn(a.j))}</div><div class="s">${esc(jn(a.j))}${a.j==='emas'||a.j==='perhiasan'?' · '+esc(a.g)+' g'+(a.j==='perhiasan'?' '+esc(a.kr||24)+'K':''):''}${a.s?' · sejak '+esc(fD(a.s)):''}${a.z?(a.j==='hutang'?' · dikurangkan':' · kena zakat'):''}${a.tx?' · dari catatan investasi':''}</div></div>
+   <div class="amt ${a.j==='hutang'?'out':''}">${a.j==='hutang'?'−':''}${rp(aVal(a))}</div><div>${a.tx?`<button class="mini" data-e="${esc(a.tx)}">Ubah</button><button class="mini" data-x="${esc(a.tx)}">Hapus</button>`:`<button class="mini" data-ae="${esc(a.id)}">Ubah</button><button class="mini" data-ax="${esc(a.id)}">Hapus</button>`}</div></div>`).join(''):'<div class="empty">Belum ada aset lain. Contoh: logam mulia, tabungan haji, rumah.</div>')}
 document.addEventListener('gotab',e=>go(e.detail));
 
 /* ---------- dompet ---------- */
@@ -611,7 +638,7 @@ const haulOk=a=>!a.s||(new Date()-pd(a.s))/864e5>=354;
 let zNow=0;
 function renderZakat(keep){const E=K.set.emas||0,nis=85*E,useH=K.set.haul!==false;
   if(!keep)$('zG').value=E?E.toLocaleString('id-ID'):'';$('zH').checked=useH;
-  const z=K.aset.filter(a=>a.j!=='hutang'&&a.z),inc=z.filter(a=>!useH||haulOk(a)),bel=z.filter(a=>useH&&!haulOk(a));
+  const z=allAset().filter(a=>a.j!=='hutang'&&a.z),inc=z.filter(a=>!useH||haulOk(a)),bel=z.filter(a=>useH&&!haulOk(a));
   const akz=K.akun.filter(a=>a.z!==false).map(a=>[a,Math.max(0,saldo(a.id))]).filter(x=>x[1]);
   const H=inc.reduce((s,a)=>s+aVal(a),0)+akz.reduce((s,x)=>s+x[1],0),D=K.aset.filter(a=>a.j==='hutang'&&a.z).reduce((s,a)=>s+aVal(a),0),B=Math.max(0,H-D),ok=nis>0&&B>=nis;
   zNow=ok?Math.round(B*.025):0;
