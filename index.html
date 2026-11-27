@@ -163,7 +163,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 <div class="grid two">
   <form class="pn" id="fTx" autocomplete="off">
     <h2 id="fTxH">Catat transaksi</h2>
-    <div class="seg" id="tSeg"><button type="button" data-t="out" class="on">Pengeluaran</button><button type="button" data-t="in">Pemasukan</button><button type="button" data-t="tf">Pindah</button><button type="button" data-t="inv">Investasi</button></div>
+    <div class="seg" id="tSeg"><button type="button" data-t="out" class="on">Pengeluaran</button><button type="button" data-t="in">Pemasukan</button><button type="button" data-t="tf">Pindah dompet</button><button type="button" data-t="inv">Investasi</button></div>
     <label for="tN">Nominal (Rp)</label>
     <input id="tN" class="big" inputmode="numeric" placeholder="0" required>
     <label for="tC">Catatan</label>
@@ -187,7 +187,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
       <label>Dari</label><div class="chips" id="tFrom"></div>
       <label>Ke</label><div class="chips" id="tTo"></div>
       <label for="tAdm">Biaya admin (Rp, kalau ada)</label><input id="tAdm" inputmode="numeric" placeholder="0">
-      <p class="hint">Pindah dana tidak dihitung sebagai pemasukan/pengeluaran. Biaya admin dicatat sebagai pengeluaran.</p>
+      <p class="hint">Cukup isi sekali: saldo dompet asal berkurang dan dompet tujuan bertambah otomatis, tercatat di kedua dompet. Kekayaan tidak berubah dan tidak dihitung sebagai pemasukan/pengeluaran. Biaya admin dicatat sebagai pengeluaran.</p>
     </div>
     <label for="tD">Tanggal</label><input id="tD" type="date">
     <label class="chk" style="margin-top:12px"><input type="checkbox" id="tX"><span>Catatan lampau — tidak mengubah saldo rekening</span></label>
@@ -277,6 +277,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
     <span class="tag">Total saldo rekening &amp; dompet</span>
     <div class="hero" id="dTot">Rp 0</div>
     <div id="dList"></div>
+    <div id="dMut"></div>
     <button class="btn ghost wide" id="dTf" type="button">⇄ Pindah dana antar rekening</button>
   </div>
   <form class="pn" id="fAk" autocomplete="off">
@@ -567,11 +568,12 @@ function editTx(id){let t=allTx().find(x=>x.id===id);if(!t)return;if(t.ln)t=allT
   $('fTx').classList.add('edit-on');drawChips();render();$('fTx').scrollIntoView({behavior:'smooth',block:'start'})}
 function delTx(id){if(!allTx().some(x=>x.id===id))return;mutate('Transaksi dihapus',()=>removeTx(id))}
 const ijn=j=>(IJ.find(x=>x[0]===j)||IJ[2])[1];
-const txRow=t=>t.t==='inv'?`<div class="tx"><div><div class="k">◆ ${esc(t.c||ijn(t.j))}${t.g?' '+esc(t.g)+' g':''}</div><div class="s">Investasi · ${esc(ijn(t.j))}${t.j==='perhiasan'?' '+esc(t.kr)+'K':''} · ${esc(akn(t.a))}${t.x?' · tidak mengubah saldo':''}</div></div>
+const sxs=v=>v==null?'':` · saldo <b style="color:var(--ink)">${rp(v)}</b>`;
+const txRow=(t,ctx,sal)=>t.t==='inv'?`<div class="tx"><div><div class="k">◆ ${esc(t.c||ijn(t.j))}${t.g?' '+esc(t.g)+' g':''}</div><div class="s">Investasi · ${esc(ijn(t.j))}${t.j==='perhiasan'?' '+esc(t.kr)+'K':''} · ${esc(akn(t.a))}${t.x?' · tidak mengubah saldo':''}${sxs(sal)}</div></div>
  <div class="amt" style="color:var(--gold)">${rp(t.n)}</div>
- <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:t.t==='tf'?`<div class="tx"><div><div class="k">⇄ ${esc(akn(t.a))} → ${esc(akn(t.b))}</div><div class="s">Pindah dana${t.adm?' · admin '+rp(t.adm):''}${t.c?' · '+esc(t.c):''}${t.x?' · tidak mengubah saldo':''}</div></div>
- <div class="amt" style="color:var(--pri)">${rp(t.n)}</div>
- <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:`<div class="tx"><div><div class="k">${esc(t.c||t.k)}</div><div class="s">${esc(t.k)} · ${esc(t.a?akn(t.a):t.m||'')}${t.x?' · tidak mengubah saldo':''}</div></div>
+ <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:t.t==='tf'?`<div class="tx"><div><div class="k">${ctx&&ctx===t.b?'↓ Masuk dari '+esc(akn(t.a)):ctx&&ctx===t.a?'↑ Pindah ke '+esc(akn(t.b)):'⇄ '+esc(akn(t.a))+' → '+esc(akn(t.b))}</div><div class="s">Pindah dompet${t.adm?' · admin '+rp(t.adm):''}${t.c?' · '+esc(t.c):''}${t.x?' · tidak mengubah saldo':''}${sxs(sal)}</div></div>
+ ${ctx&&ctx===t.b?`<div class="amt in">+${rp(t.n)}</div>`:ctx&&ctx===t.a?`<div class="amt out">−${rp(t.n)}</div>`:`<div class="amt" style="color:var(--pri)">${rp(t.n)}</div>`}
+ <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:`<div class="tx"><div><div class="k">${esc(t.c||t.k)}</div><div class="s">${esc(t.k)} · ${esc(t.a?akn(t.a):t.m||'')}${t.x?' · tidak mengubah saldo':''}${sxs(sal)}</div></div>
  <div class="amt ${t.t==='in'?'in':'out'}">${t.t==='in'?'+':'−'}${rp(t.n)}</div>
  <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`;
 document.addEventListener('click',e=>{const b=e.target.closest('[data-e],[data-x],[data-ae],[data-ax]');if(!b)return;
@@ -579,7 +581,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-e],[data-x
 function renderCatat(){const d=$('tD').value||today(),l=inR(d,d).slice().reverse();
   $('dayH').textContent=d===today()?'Hari ini':fD(d);
   $('daySum').innerHTML=`<span>Masuk <b style="color:var(--in)">${rp(tot(l,'in'))}</b></span><span>Keluar <b style="color:var(--out)">${rp(tot(l,'out'))}</b></span>`;
-  $('dayList').innerHTML=l.length?l.map(txRow).join(''):'<div class="empty">Belum ada catatan di tanggal ini.</div>'}
+  $('dayList').innerHTML=l.length?l.map(t=>txRow(t)).join(''):'<div class="empty">Belum ada catatan di tanggal ini.</div>'}
 
 /* ---------- laporan ---------- */
 const MODES=[['hari','Harian'],['minggu','Mingguan'],['bulan','Bulanan'],['tahun','Tahunan']];
@@ -627,7 +629,7 @@ function detail(p){const c=dctx[p];if(!c)return;const k=dsel[p],svg=$(p+'Dn');
   const big=l.reduce((m,t)=>t.n>m.n?t:m,l[0]);
   $(p+'Det').innerHTML=`<div class="det"><div class="hd"><b>Rincian ${esc(k)}</b><button class="mini" type="button" data-cl="${p}">Tutup ✕</button></div>
    <div class="sum" style="margin:4px 0 6px"><span>${l.length} transaksi</span><span>Total <b>${rp(row[1])}</b></span><span>Rata-rata <b>${rp(row[1]/l.length)}</b></span>${l.length>1?`<span>Terbesar <b>${rp(big.n)}</b></span>`:''}</div>
-   ${Object.keys(byD).map(d=>`<div class="day">${fD(d)}</div>`+byD[d].map(txRow).join('')).join('')}</div>`}
+   ${Object.keys(byD).map(d=>`<div class="day">${fD(d)}</div>`+byD[d].map(t=>txRow(t)).join('')).join('')}</div>`}
 document.querySelectorAll('.dn').forEach(w=>w.addEventListener('click',e=>{const t=e.target.closest('[data-k]');if(!t)return;const p=w.dataset.p;
   dsel[p]=dsel[p]===t.dataset.k?'':t.dataset.k;detail(p);if(dsel[p])$(p+'Det').scrollIntoView({behavior:'smooth',block:'nearest'})}));
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cl]');if(!b)return;dsel[b.dataset.cl]='';detail(b.dataset.cl)});
@@ -647,7 +649,7 @@ function rekap(l,lbl){rkL=l;$('rkH').textContent='Rekap per dompet · '+lbl;
   $('rkT').innerHTML=html;rkDetail()}
 function rkDetail(){const a=K.akun.find(x=>x.id===rkSel);if(!a){$('rkDet').innerHTML='';return}
   const l=rkL.filter(t=>t.a===a.id||(t.t==='tf'&&t.b===a.id)).sort((x,y)=>y.d.localeCompare(x.d)),byD={};l.forEach(t=>(byD[t.d]||=[]).push(t));
-  $('rkDet').innerHTML=`<div class="det"><div class="hd"><b>Rincian ${esc(a.nm)}</b><button class="mini" type="button" data-rkc="1">Tutup ✕</button></div><div class="sum" style="margin:4px 0 6px"><span>${l.length} transaksi</span><span>Saldo sekarang <b>${rp(saldo(a.id))}</b></span></div>${Object.keys(byD).map(d=>`<div class="day">${fD(d)}</div>`+byD[d].map(txRow).join('')).join('')}</div>`}
+  $('rkDet').innerHTML=`<div class="det"><div class="hd"><b>Rincian ${esc(a.nm)}</b><button class="mini" type="button" data-rkc="1">Tutup ✕</button></div><div class="sum" style="margin:4px 0 6px"><span>${l.length} transaksi</span><span>Saldo sekarang <b>${rp(saldo(a.id))}</b></span></div>${Object.keys(byD).map(d=>`<div class="day">${fD(d)}</div>`+byD[d].map(t=>txRow(t,a.id)).join('')).join('')}</div>`}
 $('rkT').onclick=e=>{const r=e.target.closest('[data-rk]');if(!r)return;rkSel=rkSel===r.dataset.rk?'':r.dataset.rk;
   $('rkT').querySelectorAll('[data-rk]').forEach(x=>x.classList.toggle('on',x.dataset.rk===rkSel));rkDetail();if(rkSel)$('rkDet').scrollIntoView({behavior:'smooth',block:'nearest'})};
 document.addEventListener('click',e=>{if(e.target.closest('[data-rkc]')){rkSel='';$('rkT').querySelectorAll('.on').forEach(x=>x.classList.remove('on'));rkDetail()}});
@@ -679,7 +681,7 @@ function renderLap(){if(rAcc&&!K.akun.some(a=>a.id===rAcc))rAcc='';
   donut('o',grp('out',x=>x.k),r.l,l.filter(x=>x.t==='out'));donut('i',grp('in',x=>x.k),r.l,l.filter(x=>x.t==='in'));
   rekap(l,r.l);
   const byD={};l.forEach(x=>(byD[x.d]||=[]).push(x));
-  $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(txRow).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>';renderTren();showSub()}
+  $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(t=>txRow(t,rAcc)).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>';renderTren();showSub()}
 const svg=$('rCh');
 function draw(){if(view!=='laporan'||!bk.length)return;const W=svg.clientWidth,H=svg.clientHeight;if(!W)return;
   const pl=W<520?46:56,pb=24,pt=8,n=bk.length,mx=Math.max(1,...bk.map(b=>Math.max(b.i,b.o)));
@@ -767,11 +769,22 @@ $('fAk').onsubmit=e=>{e.preventDefault();const nm=$('kNm').value.trim().slice(0,
 function editAk(id){const a=K.akun.find(x=>x.id===id);if(!a)return;kEdit=id;$('kNm').value=a.nm;$('kJ').value=a.j;$('kA').value=a.awal?(+a.awal).toLocaleString('id-ID'):'';$('kT').value=a.tgl||'';$('kZ').checked=a.z!==false;
   $('fAkH').textContent='Atur '+a.nm;$('kCancel').hidden=false;$('fAk').classList.add('edit-on');$('fAk').scrollIntoView({behavior:'smooth',block:'start'})}
 function delAk(id){const a=K.akun.find(x=>x.id===id);if(!a)return;mutate('Rekening '+a.nm+' dihapus',()=>{K.akun=K.akun.filter(x=>x.id!==id)})}
-$('dList').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.ke)editAk(b.dataset.ke);if(b.dataset.kx)delAk(b.dataset.kx)};
+$('dList').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.ke)editAk(b.dataset.ke);if(b.dataset.kx)delAk(b.dataset.kx);
+  if(b.dataset.km){mSel=mSel===b.dataset.km?'':b.dataset.km;mutasi();if(mSel)$('dMut').scrollIntoView({behavior:'smooth',block:'start'})}};
+document.addEventListener('click',e=>{if(e.target.closest('[data-kmc]')){mSel='';mutasi()}});
 $('dTf').onclick=()=>{go('catat');fT='tf';editId=null;drawChips();$('fTx').scrollIntoView({behavior:'smooth',block:'start'})};
 function renderDompet(){const T=totSaldo();$('dTot').textContent=rp(T);$('dTot').classList.toggle('neg',T<0);
   $('dList').innerHTML=K.akun.length?['kas','bank','ewallet'].map(j=>{const l=K.akun.filter(a=>a.j===j);return l.length?`<div class="day">${AJ[j]}</div>`+l.map(a=>{const v=saldo(a.id);
-    return `<div class="tx"><div><div class="k">${esc(a.nm)}</div><div class="s">Saldo awal ${rp(+a.awal||0)}${a.tgl?' · '+esc(fD(a.tgl)):''}${a.z===false?' · tidak dizakati':''}</div></div><div class="amt${v<0?' neg':''}">${rp(v)}</div><div><button class="mini" type="button" data-ke="${esc(a.id)}">Atur</button><button class="mini" type="button" data-kx="${esc(a.id)}">Hapus</button></div></div>`}).join(''):''}).join(''):'<div class="empty">Belum ada rekening. Tambahkan lewat formulir.</div>'}
+    return `<div class="tx"><div><div class="k">${esc(a.nm)}</div><div class="s">Saldo awal ${rp(+a.awal||0)}${a.tgl?' · '+esc(fD(a.tgl)):''}${a.z===false?' · tidak dizakati':''}</div></div><div class="amt${v<0?' neg':''}">${rp(v)}</div><div><button class="mini" type="button" data-km="${esc(a.id)}" style="color:var(--pri);font-weight:800">Mutasi</button><button class="mini" type="button" data-ke="${esc(a.id)}">Atur</button><button class="mini" type="button" data-kx="${esc(a.id)}">Hapus</button></div></div>`}).join(''):''}).join(''):'<div class="empty">Belum ada rekening. Tambahkan lewat formulir.</div>';
+  mutasi()}
+let mSel='';
+function mutasi(){const a=K.akun.find(x=>x.id===mSel);if(!a){$('dMut').innerHTML='';return}
+  const f=a.tgl||'',l=allTx().filter(t=>(t.a===a.id||(t.t==='tf'&&t.b===a.id))&&t.d>=f&&!t.x).sort((x,y)=>x.d.localeCompare(y.d));
+  let run=+a.awal||0;const rows=l.map(t=>{run+=t.t==='tf'?(t.b===a.id?t.n:-t.n):t.t==='in'?t.n:-t.n;return[t,run]}).reverse(),byD={};rows.forEach(r=>(byD[r[0].d]||=[]).push(r));
+  const isIn=t=>t.t==='in'||(t.t==='tf'&&t.b===a.id),ii=l.reduce((s,t)=>s+(isIn(t)?t.n:0),0),oo=l.reduce((s,t)=>s+(isIn(t)?0:t.n),0);
+  $('dMut').innerHTML=`<div class="det"><div class="hd"><b>Mutasi ${esc(a.nm)}</b><button class="mini" type="button" data-kmc="1">Tutup ✕</button></div>
+   <div class="sum" style="margin:4px 0 6px"><span>Saldo awal <b>${rp(+a.awal||0)}</b>${a.tgl?' ('+esc(fD(a.tgl))+')':''}</span><span>Masuk <b style="color:var(--in)">${rp(ii)}</b></span><span>Keluar <b style="color:var(--out)">${rp(oo)}</b></span><span>Saldo akhir <b>${rp(saldo(a.id))}</b></span></div>
+   ${rows.length?Object.keys(byD).map(d=>`<div class="day">${fD(d)}</div>`+byD[d].map(([t,v])=>txRow(t,a.id,v)).join('')).join(''):'<div class="empty">Belum ada mutasi sejak saldo awal.</div>'}</div>`}
 
 /* ---------- zakat ---------- */
 fmtIn($('zG'));let zT,zSnap=false;
