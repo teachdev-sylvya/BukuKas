@@ -130,6 +130,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 #rMode{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}#rMode .chip{padding:7px 4px;font-size:14px}
 .pbar .per{margin:0 auto}
 @media(max-width:400px){.subtab button,#rMode .chip{font-size:13px}}
+.kg{width:100%;font-size:12px;font-weight:800;color:var(--mut);margin:4px 0 -2px}.kg:first-child{margin-top:0}
 .top1{background:var(--pink);border-radius:14px;padding:10px 14px;font-size:15px;margin-top:4px}
 @media(max-width:600px){.dn{grid-template-columns:1fr}.dn svg{max-width:200px}}
 .meter{height:18px;background:var(--soft);border-radius:18px;overflow:hidden;margin:10px 0 4px}
@@ -396,7 +397,9 @@ const fD=s=>{const d=pd(s);return HARI[d.getDay()]+', '+d.getDate()+' '+BLN[d.ge
 const uid0=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
 const KAT={out:[['Makan & minum','makan minum kopi jajan sarapan resto gofood grabfood shopeefood bakso nasi snack'],['Listrik','listrik pln token'],['Air','pdam palyja aetra tagihan air bayar air'],['Gas','gas lpg elpiji pgn'],['Belanja rumah','beras sayur pasar belanja minyak sabun indomaret alfamart galon telur ikan ayam daging'],['Transportasi','bensin bbm pertalite pertamax parkir tol ojek gojek krl busway servis motor mobil'],['Tagihan lain','iuran ipl bpjs wifi indihome sampah tagihan'],['Pulsa & internet','pulsa kuota data'],['Pendidikan & kuliah','spp kuliah ukt buku fotokopi print makalah sekolah les seminar'],['Kesehatan','obat dokter klinik apotek vitamin rumah sakit'],['Anak','anak susu popok mainan saku'],['Nafkah orang tua','ortu orang tua mertua ibu bapak mama papa umi abi'],['Sedekah & infaq','sedekah infaq infak wakaf donasi masjid kajian'],['Zakat','zakat'],['Olahraga','gym zumba trainer pt'],['Cicilan & hutang','cicilan kredit angsuran paylater kpr hutang'],['Biaya admin bank','admin biaya transfer bulanan materai'],['Pajak bank','pajak pph'],['Tip','tip tips tipping'],['Pakaian & pribadi','baju gamis jilbab kerudung khimar skincare salon sepatu tas'],['Lainnya','']],
- in:[['Gaji','gaji'],['Tunjangan','tunjangan sertifikasi tpg tpp tukin'],['Honor','honor narasumber mentor pengawas panitia lembur'],['Usaha / jualan','jualan penjualan usaha order laba'],['Hadiah / pemberian','hadiah thr kado dikasih pemberian'],['Bunga bank','bunga giro'],['Investasi / bagi hasil','bagi hasil dividen investasi emas'],['Lainnya','']]};
+ in:[['Gaji Devy','gaji devy','Devy'],['Sertifikasi Devy','sertifikasi tpg','Devy'],['Insentif Devy','insentif tpp tukin tunjangan','Devy'],['Lainnya Devy','honor narasumber mentor pengawas panitia lembur devy','Devy'],
+   ['Gaji Pak Akbar','gaji akbar suami','Pak Akbar'],['Bonus Pak Akbar','bonus akbar suami','Pak Akbar'],
+   ['Hadiah / pemberian','hadiah thr kado dikasih pemberian','Lainnya'],['Usaha / jualan','jualan penjualan usaha order laba','Lainnya'],['Bunga bank','bunga giro','Lainnya'],['Investasi / bagi hasil','bagi hasil dividen investasi emas','Lainnya'],['Lainnya','','Lainnya']]};
 const MET=['Tunai','Transfer bank','QRIS','E-wallet'];
 const JEN=[['kas','Uang tunai',1],['bank','Tabungan bank',1],['ewallet','E-wallet',1],['emas','Emas / logam mulia',1],['perhiasan','Perhiasan emas',1],['haji','Tabungan haji',1],['invest','Deposito / investasi',1],['piutang','Piutang lancar',1],['properti','Rumah / tanah',0],['kendaraan','Kendaraan',0],['lain','Lainnya',0],['hutang','Hutang / cicilan',1]];
 const jn=j=>j==='dompet'?'Rekening & dompet':(JEN.find(x=>x[0]===j)||JEN.find(x=>x[0]==='lain'))[1];
@@ -517,10 +520,10 @@ const IJ=[['emas','Logam mulia'],['perhiasan','Perhiasan emas'],['invest','Depos
 $('tD').value=today();fmtIn($('tN'));fmtIn($('tAdm'));
 const akChips=(sel,attr,skip)=>K.akun.filter(a=>a.id!==skip).map(a=>{const v=saldo(a.id);return `<button type="button" class="chip${a.id===sel?' on':''}" data-${attr}="${esc(a.id)}">${esc(a.nm)} <small class="${v<0?'neg':''}">${sh(v)}</small></button>`}).join('')||'<span class="hint">Tambahkan rekening di tab Dompet.</span>';
 function guess(){if(fKman||fT==='tf'||fT==='inv')return;const c=' '+$('tC').value.toLowerCase()+' ';
-  const hit=KAT[fT].find(([n,w])=>w&&w.split(' ').some(x=>c.includes(x.length<4?' '+x+' ':x)));fK=hit?hit[0]:'';drawChips()}
+  let hit=null,best=0;KAT[fT].forEach(([n,w])=>{if(!w)return;const sc=w.split(' ').filter(x=>c.includes(x.length<4?' '+x+' ':x)).length;if(sc>best){best=sc;hit=n}});fK=hit||'';drawChips()}
 function drawChips(){
   $('tSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===fT));
-  $('tK').innerHTML=(KAT[fT]||[]).map(([n])=>`<button type="button" class="chip${n===fK?' on':''}" data-k="${esc(n)}">${esc(n)}</button>`).join('');
+  let lg='';$('tK').innerHTML=(KAT[fT]||[]).map(([n,,g])=>{const h=g&&g!==lg?`<div class="kg">${esc(g)}</div>`:'';lg=g||lg;return h+`<button type="button" class="chip${n===fK?' on':''}" data-k="${esc(n)}">${esc(n)}</button>`}).join('');
   const tf=fT==='tf',inv=fT==='inv';$('ioWrap').hidden=tf||inv;$('tfWrap').hidden=!tf;$('invWrap').hidden=!inv;
   $('tIJ').innerHTML=IJ.map(([k,n])=>`<button type="button" class="chip${k===fIJ?' on':''}" data-ij="${k}">${n}</button>`).join('');
   $('tIGW').hidden=fIJ==='invest';$('tIKW').hidden=fIJ!=='perhiasan';
