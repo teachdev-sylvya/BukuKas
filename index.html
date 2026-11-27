@@ -173,6 +173,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
       <p class="hint">Kategori terpilih otomatis dari catatan. Ketuk untuk mengganti.</p>
       <label>Kategori</label><div class="chips" id="tK"></div>
       <label id="tAL">Sumber dana</label><div class="chips" id="tA"></div>
+      <div id="admWrap"><label for="tOAdm">Biaya admin (Rp, kalau ada)</label><input id="tOAdm" inputmode="numeric" placeholder="0">
+      <p class="hint">Misalnya admin bayar tagihan listrik/air. Dicatat terpisah sebagai "Biaya admin bank" dari sumber dana yang sama.</p></div>
     </div>
     <div id="invWrap" hidden>
       <label>Jenis investasi</label><div class="chips" id="tIJ"></div>
@@ -517,14 +519,14 @@ function show(v){view=v;document.querySelectorAll('nav button').forEach(b=>b.set
 /* ---------- catat ---------- */
 let fT='out',fK='',fKman=false,fM='Tunai',editId=null,fA='',fFrom='',fTo='',fIJ='emas';
 const IJ=[['emas','Logam mulia'],['perhiasan','Perhiasan emas'],['invest','Deposito / investasi lain']];
-$('tD').value=today();fmtIn($('tN'));fmtIn($('tAdm'));
+$('tD').value=today();fmtIn($('tN'));fmtIn($('tAdm'));fmtIn($('tOAdm'));
 const akChips=(sel,attr,skip)=>K.akun.filter(a=>a.id!==skip).map(a=>{const v=saldo(a.id);return `<button type="button" class="chip${a.id===sel?' on':''}" data-${attr}="${esc(a.id)}">${esc(a.nm)} <small class="${v<0?'neg':''}">${sh(v)}</small></button>`}).join('')||'<span class="hint">Tambahkan rekening di tab Dompet.</span>';
 function guess(){if(fKman||fT==='tf'||fT==='inv')return;const c=' '+$('tC').value.toLowerCase()+' ';
   let hit=null,best=0;KAT[fT].forEach(([n,w])=>{if(!w)return;const sc=w.split(' ').filter(x=>c.includes(x.length<4?' '+x+' ':x)).length;if(sc>best){best=sc;hit=n}});fK=hit||'';drawChips()}
 function drawChips(){
   $('tSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===fT));
   let lg='';$('tK').innerHTML=(KAT[fT]||[]).map(([n,,g])=>{const h=g&&g!==lg?`<div class="kg">${esc(g)}</div>`:'';lg=g||lg;return h+`<button type="button" class="chip${n===fK?' on':''}" data-k="${esc(n)}">${esc(n)}</button>`}).join('');
-  const tf=fT==='tf',inv=fT==='inv';$('ioWrap').hidden=tf||inv;$('tfWrap').hidden=!tf;$('invWrap').hidden=!inv;
+  const tf=fT==='tf',inv=fT==='inv';$('ioWrap').hidden=tf||inv;$('admWrap').hidden=fT!=='out';$('tfWrap').hidden=!tf;$('invWrap').hidden=!inv;
   $('tIJ').innerHTML=IJ.map(([k,n])=>`<button type="button" class="chip${k===fIJ?' on':''}" data-ij="${k}">${n}</button>`).join('');
   $('tIGW').hidden=fIJ==='invest';$('tIKW').hidden=fIJ!=='perhiasan';
   if(!K.akun.some(a=>a.id===fA))fA=(K.akun.find(a=>a.id===K.set.lastA)||K.akun[0]||{}).id||'';
@@ -541,7 +543,7 @@ $('tSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;fT=b.datas
 $('tK').onclick=e=>{const b=e.target.closest('button');if(!b)return;fK=b.dataset.k;fKman=true;drawChips()};
 
 $('tC').oninput=guess;$('tD').onchange=()=>{$('tX').checked=($('tD').value||today())<today();render()};
-function resetTx(){$('tIG').value='';$('tIZ').checked=true;if(fT==='inv')fT='out';$('tX').checked=($('tD').value||today())<today();editId=null;$('tN').value='';$('tC').value='';$('tAdm').value='';fFrom='';fTo='';if(fT==='tf')fT='out';fKman=false;fK='';$('fTxH').textContent='Catat transaksi';$('tCancel').hidden=true;$('fTx').classList.remove('edit-on');drawChips()}
+function resetTx(){$('tOAdm').value='';$('tIG').value='';$('tIZ').checked=true;if(fT==='inv')fT='out';$('tX').checked=($('tD').value||today())<today();editId=null;$('tN').value='';$('tC').value='';$('tAdm').value='';fFrom='';fTo='';if(fT==='tf')fT='out';fKman=false;fK='';$('fTxH').textContent='Catat transaksi';$('tCancel').hidden=true;$('fTx').classList.remove('edit-on');drawChips()}
 $('tCancel').onclick=resetTx;
 function removeTx(id){const root=(allTx().find(x=>x.id===id)||{}).ln||id;
   Object.keys(K.tx).forEach(m=>{K.tx[m]=K.tx[m].filter(x=>x.id!==root&&x.ln!==root);if(!K.tx[m].length)delete K.tx[m]})}
@@ -556,15 +558,16 @@ $('fTx').onsubmit=e=>{e.preventDefault();const n=num($('tN').value);if(!n){$('tN
     if(adm)add.push({id:id+'-adm',d,t:'out',n:adm,k:'Biaya admin bank',m:'Transfer bank',a:fFrom,c:'Biaya admin pindah dana',ln:id});
     msg=(editId?'Pemindahan diubah: ':'Dipindah ')+rp(n)+' '+akn(fFrom)+' → '+akn(fTo);chk=fFrom}
   else{if(!fA){toast('Pilih sumber dana dulu',true);return}
-    const ak=K.akun.find(a=>a.id===fA);add.push({id,d,t:fT,n,k:fK||'Lainnya',m:ak?AM[ak.j]||'':fM,a:fA,c});
-    msg=editId?'Transaksi diubah':(fT==='in'?'Pemasukan ':'Pengeluaran ')+rp(n)+' tersimpan';chk=fT==='out'?fA:''}
+    const ak=K.akun.find(a=>a.id===fA),mm=ak?AM[ak.j]||'':fM,oadm=fT==='out'?num($('tOAdm').value):0;add.push({id,d,t:fT,n,k:fK||'Lainnya',m:mm,a:fA,c});
+    if(oadm)add.push({id:id+'-adm',d,t:'out',n:oadm,k:'Biaya admin bank',m:mm,a:fA,c:'Biaya admin '+(c||fK||'pembayaran'),ln:id});
+    msg=(editId?'Transaksi diubah':(fT==='in'?'Pemasukan ':'Pengeluaran ')+rp(n)+' tersimpan')+(oadm?' + admin '+rp(oadm):'');chk=fT==='out'?fA:''}
   if(x){add.forEach(t=>t.x=true);chk='';msg+=' (saldo tidak berubah)'}
   mutate(msg,()=>{if(editId)removeTx(editId);add.forEach(t=>(K.tx[t.d.slice(0,7)]||=[]).push(t));if(fT!=='tf')K.set={...K.set,lastA:fA}});
   if(chk&&saldo(chk)<0)toast(msg+' · saldo '+akn(chk)+' jadi minus');
   resetTx();drawChips();$('tN').focus()};
 function editTx(id){let t=allTx().find(x=>x.id===id);if(!t)return;if(t.ln)t=allTx().find(x=>x.id===t.ln)||t;
   if(view!=='catat')go('catat');editId=t.id;fT=t.t;fK=t.k||'';fKman=true;fM=t.m||fM;fA=t.a||fA;
-  $('tX').checked=!!t.x;
+  $('tX').checked=!!t.x;{const ch=allTx().find(x=>x.ln===t.id&&x.t==='out');$('tOAdm').value=t.t==='out'&&ch?ch.n.toLocaleString('id-ID'):''}
   if(t.t==='inv'){fIJ=t.j||'emas';$('tIG').value=t.g||'';$('tIK').value=String(t.kr||24);$('tIZ').checked=t.z!==false}
   if(t.t==='tf'){fFrom=t.a;fTo=t.b;$('tAdm').value=t.adm?t.adm.toLocaleString('id-ID'):''}
   $('tN').value=t.n.toLocaleString('id-ID');$('tC').value=t.c||'';$('tD').value=t.d;$('fTxH').textContent='Ubah transaksi';$('tCancel').hidden=false;
