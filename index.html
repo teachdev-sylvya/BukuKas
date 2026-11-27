@@ -100,8 +100,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .tag.ok{background:var(--gold);color:#fff}
 .chk{display:flex;gap:10px;align-items:flex-start;font-weight:600;font-size:14px}
 .chk input{width:22px;height:22px;min-height:0;margin:1px 0 0;flex:none;accent-color:var(--pri)}
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(200%);background:#3a2d5c;color:#fff;padding:8px 8px 8px 16px;border-radius:14px;display:flex;gap:10px;align-items:center;transition:transform .25s;z-index:9;width:max-content;max-width:calc(100vw - 24px);font-size:14px;box-shadow:0 8px 24px rgba(40,20,80,.3)}
-#toast.on{transform:translateX(-50%) translateY(0)}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(16px);opacity:0;visibility:hidden;pointer-events:none;transition:transform .25s,opacity .25s,visibility .25s;background:#3a2d5c;color:#fff;padding:8px 8px 8px 16px;border-radius:14px;display:flex;gap:10px;align-items:center;z-index:9;width:max-content;max-width:calc(100vw - 24px);font-size:14px;box-shadow:0 8px 24px rgba(40,20,80,.3)}
+#toast.on{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;pointer-events:auto}
 #toast span{flex:1 1 auto}#toast button{flex:none;background:var(--gold);color:#fff;border:0;font:inherit;font-weight:800;padding:8px 12px;min-height:40px;border-radius:10px;cursor:pointer}
 .edit-on{outline:3px solid var(--pri2)}
 .note{background:var(--soft);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--mut)}
@@ -327,7 +327,17 @@ const tot=(l,t)=>l.reduce((a,x)=>a+(x.t===t?x.n:0),0);
 
 /* ---------- tab ---------- */
 let view='catat';
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{show(b.dataset.v);window.scrollTo({top:0})});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+/* tombol kembali HP: dari tab lain kembali ke Catat (beranda); di beranda perlu tekan dua kali untuk keluar */
+let exitT=0;
+function go(v){if(v===view){window.scrollTo({top:0});return}
+  if(v==='catat'){if(history.state&&history.state.v&&history.state.v!=='catat'&&history.state.v!=='root')history.back();else show('catat')}
+  else if(view==='catat')history.pushState({v},'','#'+v);else history.replaceState({v},'','#'+v);
+  if(v!=='catat')show(v);window.scrollTo({top:0})}
+window.addEventListener('popstate',e=>{const v=(e.state&&e.state.v)||'root';
+  if(v==='root'){if(Date.now()-exitT<2000){history.back();return}
+    exitT=Date.now();history.pushState({v:'catat'},'','#catat');show('catat');window.scrollTo({top:0});toast('Tekan kembali sekali lagi untuk keluar',true);return}
+  show(v);window.scrollTo({top:0})});
 function show(v){view=v;document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));
   document.querySelectorAll('section').forEach(s=>s.hidden=s.id!=='v-'+v);try{localStorage.setItem(LS+'-tab',v)}catch(e){};render()}
 
@@ -469,12 +479,12 @@ $('zPay').onclick=()=>{if(!zNow)return;const t={id:uid0(),d:today(),t:'out',n:zN
 /* ---------- render ---------- */
 function render(){const m=today().slice(0,7),l=K.tx[m]||[],I=tot(l,'in'),O=tot(l,'out');
   const nb=n=>(n<0?'−':'')+Math.round(Math.abs(n)).toLocaleString('id-ID'),bl=BULAN[+m.slice(5)-1];
-  $('hsum').innerHTML=`<div><span>Masuk ${bl.slice(0,3)} (Rp)</span><b style="color:#2f7d4f">${nb(I)}</b></div><div><span>Keluar (Rp)</span><b style="color:#b8405f">${nb(O)}</b></div><div><span>Sisa (Rp)</span><b>${nb(I-O)}</b></div>`;
+  $('hsum').innerHTML=`<div><span>Masuk (Rp)</span><b style="color:#2f7d4f">${nb(I)}</b></div><div><span>Keluar (Rp)</span><b style="color:#b8405f">${nb(O)}</b></div><div><span>Sisa (Rp)</span><b>${nb(I-O)}</b></div>`;
   $('undoBtn').disabled=!hist.length;
   renderCatat();if(view==='laporan')renderLap();if(view==='aset'){renderAset();aForm()}if(view==='zakat')renderZakat();if(view==='atur')renderAtur()}
 
-try{const v=localStorage.getItem(LS+'-tab');if(v&&$('v-'+v))view=v}catch(e){}
-resetTx();resetAs();show(view);idle();pull();
+try{history.replaceState({v:'root'},'',location.pathname+location.search);history.pushState({v:'catat'},'','#catat')}catch(e){}
+resetTx();resetAs();show('catat');idle();pull();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
 </script>
