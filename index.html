@@ -143,6 +143,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
       <p class="hint">Pindah dana tidak dihitung sebagai pemasukan/pengeluaran. Biaya admin dicatat sebagai pengeluaran.</p>
     </div>
     <label for="tD">Tanggal</label><input id="tD" type="date">
+    <label class="chk" style="margin-top:12px"><input type="checkbox" id="tX"><span>Catatan lampau — tidak mengubah saldo rekening</span></label>
+    <p class="hint" id="tXH">Centang untuk transaksi lama yang sudah terhitung di saldo sekarang. Tetap masuk laporan.</p>
     <button class="btn wide" id="tSave">Simpan</button>
     <button type="button" class="btn ghost wide" id="tCancel" hidden>Batal ubah</button>
   </form>
@@ -371,7 +373,7 @@ $('appUpd').onclick=()=>{toast('Memeriksa versi terbaru…',true);const go=()=>l
 const allTx=()=>Object.values(K.tx).flat();
 const akn=id=>(K.akun.find(a=>a.id===id)||{}).nm||(id?'(rekening dihapus)':'—');
 function saldo(id){const a=K.akun.find(x=>x.id===id);if(!a)return 0;let s=+a.awal||0;const f=a.tgl||'';
-  allTx().forEach(t=>{if(t.d<f)return;if(t.a===id)s+=t.t==='in'?t.n:-t.n;if(t.t==='tf'&&t.b===id)s+=t.n});return s}
+  allTx().forEach(t=>{if(t.d<f||t.x)return;if(t.a===id)s+=t.t==='in'?t.n:-t.n;if(t.t==='tf'&&t.b===id)s+=t.n});return s}
 const totSaldo=()=>K.akun.reduce((s,a)=>s+saldo(a.id),0);
 const sh=n=>(n<0?'−':'')+rpS(Math.abs(n));
 const inR=(s,e)=>allTx().filter(t=>t.d>=s&&t.d<=e);
@@ -415,13 +417,13 @@ $('tTo').onclick=e=>{const b=e.target.closest('button');if(!b)return;fTo=b.datas
 $('tSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;fT=b.dataset.t;fKman=false;guess();drawChips()};
 $('tK').onclick=e=>{const b=e.target.closest('button');if(!b)return;fK=b.dataset.k;fKman=true;drawChips()};
 $('tM').onclick=e=>{const b=e.target.closest('button');if(!b)return;fM=b.dataset.m;drawChips()};
-$('tC').oninput=guess;$('tD').onchange=render;
-function resetTx(){editId=null;$('tN').value='';$('tC').value='';$('tAdm').value='';fFrom='';fTo='';if(fT==='tf')fT='out';fKman=false;fK='';$('fTxH').textContent='Catat transaksi';$('tCancel').hidden=true;$('fTx').classList.remove('edit-on');drawChips()}
+$('tC').oninput=guess;$('tD').onchange=()=>{$('tX').checked=($('tD').value||today())<today();render()};
+function resetTx(){$('tX').checked=($('tD').value||today())<today();editId=null;$('tN').value='';$('tC').value='';$('tAdm').value='';fFrom='';fTo='';if(fT==='tf')fT='out';fKman=false;fK='';$('fTxH').textContent='Catat transaksi';$('tCancel').hidden=true;$('fTx').classList.remove('edit-on');drawChips()}
 $('tCancel').onclick=resetTx;
 function removeTx(id){const root=(allTx().find(x=>x.id===id)||{}).ln||id;
   Object.keys(K.tx).forEach(m=>{K.tx[m]=K.tx[m].filter(x=>x.id!==root&&x.ln!==root);if(!K.tx[m].length)delete K.tx[m]})}
 $('fTx').onsubmit=e=>{e.preventDefault();const n=num($('tN').value);if(!n){$('tN').focus();return}
-  const d=$('tD').value||today(),c=$('tC').value.trim().slice(0,120),id=editId||uid0(),add=[];let msg,chk;
+  const d=$('tD').value||today(),c=$('tC').value.trim().slice(0,120),id=editId||uid0(),add=[],x=$('tX').checked;let msg,chk;
   if(fT==='tf'){if(!fFrom||!fTo||fFrom===fTo){toast('Pilih rekening asal dan tujuan',true);return}
     const adm=num($('tAdm').value);add.push({id,d,t:'tf',n,a:fFrom,b:fTo,adm,c});
     if(adm)add.push({id:id+'-adm',d,t:'out',n:adm,k:'Biaya admin bank',m:'Transfer bank',a:fFrom,c:'Biaya admin pindah dana',ln:id});
@@ -429,18 +431,20 @@ $('fTx').onsubmit=e=>{e.preventDefault();const n=num($('tN').value);if(!n){$('tN
   else{if(!fA){toast('Pilih sumber dana dulu',true);return}
     add.push({id,d,t:fT,n,k:fK||'Lainnya',m:fM,a:fA,c});
     msg=editId?'Transaksi diubah':(fT==='in'?'Pemasukan ':'Pengeluaran ')+rp(n)+' tersimpan';chk=fT==='out'?fA:''}
+  if(x){add.forEach(t=>t.x=true);chk='';msg+=' (saldo tidak berubah)'}
   mutate(msg,()=>{if(editId)removeTx(editId);add.forEach(t=>(K.tx[t.d.slice(0,7)]||=[]).push(t));if(fT!=='tf')K.set={...K.set,lastA:fA}});
   if(chk&&saldo(chk)<0)toast(msg+' · saldo '+akn(chk)+' jadi minus');
   resetTx();drawChips();$('tN').focus()};
 function editTx(id){let t=allTx().find(x=>x.id===id);if(!t)return;if(t.ln)t=allTx().find(x=>x.id===t.ln)||t;
   if(view!=='catat')go('catat');editId=t.id;fT=t.t;fK=t.k||'';fKman=true;fM=t.m||fM;fA=t.a||fA;
+  $('tX').checked=!!t.x;
   if(t.t==='tf'){fFrom=t.a;fTo=t.b;$('tAdm').value=t.adm?t.adm.toLocaleString('id-ID'):''}
   $('tN').value=t.n.toLocaleString('id-ID');$('tC').value=t.c||'';$('tD').value=t.d;$('fTxH').textContent='Ubah transaksi';$('tCancel').hidden=false;
   $('fTx').classList.add('edit-on');drawChips();render();$('fTx').scrollIntoView({behavior:'smooth',block:'start'})}
 function delTx(id){if(!allTx().some(x=>x.id===id))return;mutate('Transaksi dihapus',()=>removeTx(id))}
-const txRow=t=>t.t==='tf'?`<div class="tx"><div><div class="k">⇄ ${esc(akn(t.a))} → ${esc(akn(t.b))}</div><div class="s">Pindah dana${t.adm?' · admin '+rp(t.adm):''}${t.c?' · '+esc(t.c):''}</div></div>
+const txRow=t=>t.t==='tf'?`<div class="tx"><div><div class="k">⇄ ${esc(akn(t.a))} → ${esc(akn(t.b))}</div><div class="s">Pindah dana${t.adm?' · admin '+rp(t.adm):''}${t.c?' · '+esc(t.c):''}${t.x?' · tidak mengubah saldo':''}</div></div>
  <div class="amt" style="color:var(--pri)">${rp(t.n)}</div>
- <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:`<div class="tx"><div><div class="k">${esc(t.c||t.k)}</div><div class="s">${esc(t.k)} · ${esc(t.m)}${t.a?' · '+esc(akn(t.a)):''}</div></div>
+ <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`:`<div class="tx"><div><div class="k">${esc(t.c||t.k)}</div><div class="s">${esc(t.k)} · ${esc(t.m)}${t.a?' · '+esc(akn(t.a)):''}${t.x?' · tidak mengubah saldo':''}</div></div>
  <div class="amt ${t.t==='in'?'in':'out'}">${t.t==='in'?'+':'−'}${rp(t.n)}</div>
  <div><button class="mini" data-e="${esc(t.id)}">Ubah</button><button class="mini" data-x="${esc(t.id)}">Hapus</button></div></div>`;
 document.addEventListener('click',e=>{const b=e.target.closest('[data-e],[data-x],[data-ae],[data-ax]');if(!b)return;
