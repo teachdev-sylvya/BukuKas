@@ -103,6 +103,14 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .dn .lr .vl{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
 .dn .lr .pc{grid-column:2/4;height:7px;background:var(--soft);border-radius:7px;overflow:hidden}
 .dn .lr .pc div{height:100%;border-radius:7px}
+.dn svg text{pointer-events:none}.dn circle.sg{cursor:pointer;transition:opacity .2s,stroke-width .2s}
+.dn svg.has circle.sg{opacity:.3}.dn svg.has circle.sg.on{opacity:1;stroke-width:34}
+.dn .lr{cursor:pointer;border-radius:12px;padding:6px 8px;margin:-6px -8px}
+.dn .lr:hover{background:var(--soft)}.dn .lr.on{background:var(--soft);outline:2px solid var(--lav)}
+.det{margin-top:16px;border-top:2px dashed var(--lav);padding-top:12px}
+.det .hd{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.det .hd b{font-size:17px}
+.top1.in{background:light-dark(#e3f4ea,#21382b)}
 .top1{background:var(--pink);border-radius:14px;padding:10px 14px;font-size:15px;margin-top:4px}
 @media(max-width:600px){.dn{grid-template-columns:1fr}.dn svg{max-width:200px}}
 .meter{height:18px;background:var(--soft);border-radius:18px;overflow:hidden;margin:10px 0 4px}
@@ -177,14 +185,23 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
   <div class="fig"><svg id="rCh" role="img" aria-label="Grafik pemasukan dan pengeluaran"></svg></div>
   <div class="cap" id="rCap">Ketuk batang untuk melihat angkanya.</div>
 </div>
-<div class="pn" style="margin-top:16px">
-  <h2 id="rDnH">Pengeluaran terbesar per kategori</h2>
-  <div id="rTop"></div>
-  <div class="dn"><svg id="rDn" viewBox="0 0 200 200" role="img" aria-label="Grafik pengeluaran per kategori"></svg><div class="lg" id="rDnL"></div></div>
-</div>
 <div class="grid two">
-  <div class="pn"><h2>Pemasukan per kategori</h2><div class="bars" id="rIn"></div>
-    <h2 style="margin-top:22px">Pengeluaran per sumber dana</h2><div class="bars" id="rAk"></div></div>
+<div class="pn">
+  <h2 id="oDnH">Pengeluaran per kategori</h2>
+  <div id="oTop"></div>
+  <div class="dn" data-p="o"><svg id="oDn" viewBox="0 0 200 200" role="img" aria-label="Grafik pengeluaran per kategori"></svg><div class="lg" id="oDnL"></div></div>
+  <div id="oDet"></div>
+</div>
+<div class="pn">
+  <h2 id="iDnH">Pemasukan per kategori</h2>
+  <div id="iTop"></div>
+  <div class="dn" data-p="i"><svg id="iDn" viewBox="0 0 200 200" role="img" aria-label="Grafik pemasukan per kategori"></svg><div class="lg" id="iDnL"></div></div>
+  <div id="iDet"></div>
+</div>
+</div>
+<p class="hint" style="text-align:center">Ketuk bagian donat atau nama kategori untuk melihat rinciannya.</p>
+<div class="grid two">
+  <div class="pn"><h2>Pengeluaran per sumber dana</h2><div class="bars" id="rAk"></div></div>
   <div class="pn"><h2>Rincian transaksi</h2><div id="rList"></div></div>
 </div>
 </section>
@@ -485,15 +502,34 @@ function buckets(r){const o=[];
   return o.map(b=>{const l=inR(b.s,b.e);return{...b,i:tot(l,'in'),o:tot(l,'out')}})}
 const chg=(a,b,u)=>b?`<small>${a>=b?'▲':'▼'} ${Math.abs(Math.round((a-b)/b*100))}% dari ${u}</small>`:'';
 const DC=['#7b5cc7','#e0607e','#e3a51c','#3f9a62','#9d84e0','#2f9fb5','#f29b6b','#b7aed0'];
-function donut(arr,lbl){$('rDnH').textContent='Pengeluaran terbesar · '+lbl;
-  const T=arr.reduce((a,x)=>a+x[1],0),svg=$('rDn');
-  if(!T){svg.innerHTML='<circle cx="100" cy="100" r="70" fill="none" stroke="var(--soft)" stroke-width="28"/><text x="100" y="105" text-anchor="middle" font-size="13" fill="var(--mut)">Belum ada</text>';$('rDnL').innerHTML='<div class="empty">Belum ada pengeluaran di periode ini.</div>';$('rTop').innerHTML='';return}
-  let it=arr.slice(0,7);if(arr.length>7)it=[...arr.slice(0,6),['Kategori lain',arr.slice(6).reduce((a,x)=>a+x[1],0)]];
+const DCI=['#3f9a62','#2f9fb5','#7b5cc7','#e3a51c','#8cc68f','#9d84e0','#f29b6b','#b7aed0'];
+const dsel={o:'',i:''};let dctx={o:null,i:null};
+function donut(p,arr,lbl,list){const out=p==='o',pal=out?DC:DCI;
+  $(p+'DnH').textContent=(out?'Pengeluaran':'Pemasukan')+' per kategori · '+lbl;
+  const T=arr.reduce((a,x)=>a+x[1],0),svg=$(p+'Dn');
+  if(!T){svg.classList.remove('has');svg.innerHTML='<circle cx="100" cy="100" r="70" fill="none" stroke="var(--soft)" stroke-width="28"/><text x="100" y="105" text-anchor="middle" font-size="13" fill="var(--mut)">Belum ada</text>';$(p+'DnL').innerHTML=`<div class="empty">Belum ada ${out?'pengeluaran':'pemasukan'} di periode ini.</div>`;$(p+'Top').innerHTML='';$(p+'Det').innerHTML='';dctx[p]=null;return}
+  let it=arr.slice(0,7).map(([k,v])=>[k,v,[k]]);if(arr.length>7)it=[...arr.slice(0,6).map(([k,v])=>[k,v,[k]]),['Kategori lain',arr.slice(6).reduce((a,x)=>a+x[1],0),arr.slice(6).map(x=>x[0])]];
+  dctx[p]={it,list,T,pal};if(!it.some(x=>x[0]===dsel[p]))dsel[p]='';
   const R=70,C=2*Math.PI*R;let off=0,seg='';
-  it.forEach(([k,v],i)=>{const L=v/T*C;seg+=`<circle cx="100" cy="100" r="${R}" fill="none" stroke="${DC[i%DC.length]}" stroke-width="28" stroke-dasharray="${Math.max(0,L-(it.length>1?1.5:0))} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 100 100)"><title>${esc(k)}: ${rp(v)}</title></circle>`;off+=L});
-  svg.innerHTML=seg+`<text x="100" y="94" text-anchor="middle" font-size="12" fill="var(--mut)" font-weight="700">Total</text><text x="100" y="116" text-anchor="middle" font-size="${rp(T).length>13?15:18}" font-weight="900" fill="var(--ink)">${rpS(T)}</text>`;
-  $('rDnL').innerHTML=it.map(([k,v],i)=>`<div class="lr"><i style="background:${DC[i%DC.length]}"></i><span class="nm">${i+1}. ${esc(k)} <span style="color:var(--mut);font-weight:600">${Math.round(v/T*100)}%</span></span><span class="vl">${rp(v)}</span><div class="pc"><div style="width:${v/it[0][1]*100}%;background:${DC[i%DC.length]}"></div></div></div>`).join('');
-  const [k0,v0]=arr[0];$('rTop').innerHTML=`<div class="top1">Paling besar: <b>${esc(k0)}</b> — ${rp(v0)} (${Math.round(v0/T*100)}% dari pengeluaran)</div>`}
+  it.forEach(([k,v],i)=>{const L=v/T*C;seg+=`<circle class="sg" data-k="${esc(k)}" cx="100" cy="100" r="${R}" fill="none" stroke="${pal[i%pal.length]}" stroke-width="28" stroke-dasharray="${Math.max(0,L-(it.length>1?1.5:0))} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 100 100)"><title>${esc(k)}: ${rp(v)}</title></circle>`;off+=L});
+  svg.innerHTML=seg+`<text id="${p}Ct1" x="100" y="94" text-anchor="middle" font-size="12" fill="var(--mut)" font-weight="700"></text><text id="${p}Ct2" x="100" y="116" text-anchor="middle" font-size="18" font-weight="900" fill="var(--ink)"></text>`;
+  $(p+'DnL').innerHTML=it.map(([k,v],i)=>`<div class="lr" data-k="${esc(k)}"><i style="background:${pal[i%pal.length]}"></i><span class="nm">${i+1}. ${esc(k)} <span style="color:var(--mut);font-weight:600">${Math.round(v/T*100)}%</span></span><span class="vl">${rp(v)}</span><div class="pc"><div style="width:${v/it[0][1]*100}%;background:${pal[i%pal.length]}"></div></div></div>`).join('');
+  const [k0,v0]=arr[0];$(p+'Top').innerHTML=`<div class="top1${out?'':' in'}">Paling besar: <b>${esc(k0)}</b> — ${rp(v0)} (${Math.round(v0/T*100)}% dari ${out?'pengeluaran':'pemasukan'})</div>`;
+  detail(p)}
+function detail(p){const c=dctx[p];if(!c)return;const k=dsel[p],svg=$(p+'Dn');
+  svg.classList.toggle('has',!!k);svg.querySelectorAll('.sg').forEach(e=>e.classList.toggle('on',e.dataset.k===k));
+  $(p+'DnL').querySelectorAll('.lr').forEach(e=>e.classList.toggle('on',e.dataset.k===k));
+  const row=c.it.find(x=>x[0]===k);
+  $(p+'Ct1').textContent=row?Math.round(row[1]/c.T*100)+'%':'Total';$(p+'Ct2').textContent=rpS(row?row[1]:c.T);
+  if(!row){$(p+'Det').innerHTML='';return}
+  const l=c.list.filter(t=>row[2].includes(t.k)).sort((a,b)=>b.d.localeCompare(a.d)),byD={};l.forEach(t=>(byD[t.d]||=[]).push(t));
+  const big=l.reduce((m,t)=>t.n>m.n?t:m,l[0]);
+  $(p+'Det').innerHTML=`<div class="det"><div class="hd"><b>Rincian ${esc(k)}</b><button class="mini" type="button" data-cl="${p}">Tutup ✕</button></div>
+   <div class="sum" style="margin:4px 0 6px"><span>${l.length} transaksi</span><span>Total <b>${rp(row[1])}</b></span><span>Rata-rata <b>${rp(row[1]/l.length)}</b></span>${l.length>1?`<span>Terbesar <b>${rp(big.n)}</b></span>`:''}</div>
+   ${Object.keys(byD).map(d=>`<div class="day">${fD(d)}</div>`+byD[d].map(txRow).join('')).join('')}</div>`}
+document.querySelectorAll('.dn').forEach(w=>w.addEventListener('click',e=>{const t=e.target.closest('[data-k]');if(!t)return;const p=w.dataset.p;
+  dsel[p]=dsel[p]===t.dataset.k?'':t.dataset.k;detail(p);if(dsel[p])$(p+'Det').scrollIntoView({behavior:'smooth',block:'nearest'})}));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-cl]');if(!b)return;dsel[b.dataset.cl]='';detail(b.dataset.cl)});
 function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1)),pl=inR(pr.s,pr.e);
   $('rMode').innerHTML=MODES.map(([m,n])=>`<button class="chip${m===rM?' on':''}" data-m="${m}">${n}</button>`).join('');
   $('rLbl').textContent=r.l;
@@ -505,8 +541,7 @@ function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1))
   bk=buckets(r);draw();$('rCap').textContent='Ketuk batang untuk melihat angkanya.';
   const grp=(t,f)=>{const m={};l.filter(x=>t?x.t===t:x.t!=='tf').forEach(x=>{const k=f(x);m[k]=(m[k]||0)+x.n});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
   const bars=(arr,c,emp)=>{const T=arr.reduce((a,x)=>a+x[1],0);return arr.length?arr.map(([k,v])=>`<div class="b"><div class="t"><span>${esc(k)} <span style="color:var(--mut)">${Math.round(v/T*100)}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${c}"></div></div></div>`).join(''):`<div class="empty">${emp}</div>`};
-  donut(grp('out',x=>x.k),r.l);
-  $('rIn').innerHTML=bars(grp('in',x=>x.k),'var(--in)','Belum ada pemasukan.');
+  donut('o',grp('out',x=>x.k),r.l,l.filter(x=>x.t==='out'));donut('i',grp('in',x=>x.k),r.l,l.filter(x=>x.t==='in'));
   $('rAk').innerHTML=bars(grp('out',x=>x.a?akn(x.a):'Belum dipilih'),'var(--gold)','Belum ada pengeluaran.');
   const byD={};l.forEach(x=>(byD[x.d]||=[]).push(x));
   $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(txRow).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>'}
