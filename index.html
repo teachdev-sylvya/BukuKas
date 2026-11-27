@@ -258,7 +258,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
       <div><label for="aJ">Jenis</label><select id="aJ"></select></div>
       <div><label for="aS">Dimiliki sejak</label><input id="aS" type="date"></div>
     </div>
-    <div id="aNWrap"><label for="aN">Nilai sekarang (Rp)</label><input id="aN" inputmode="numeric" placeholder="0"></div>
+    <div id="aNWrap"><label for="aN" id="aNL">Nilai sekarang (Rp)</label><input id="aN" inputmode="numeric" placeholder="0"></div>
     <div id="aGWrap" hidden><div class="row2"><div><label for="aG">Berat (gram)</label><input id="aG" inputmode="decimal" placeholder="0"></div><div id="aKW"><label for="aK">Kadar</label><select id="aK"><option value="24">24 karat</option><option value="22">22 karat</option><option value="18">18 karat</option><option value="17">17 karat</option><option value="16">16 karat</option><option value="8">8 karat</option></select></div></div><p class="hint" id="aGHint"></p></div>
     <label class="chk"><input type="checkbox" id="aZ"><span id="aZL">Masuk hitungan zakat mal</span></label>
     <button class="btn wide">Simpan aset</button>
@@ -588,10 +588,13 @@ const ro=new ResizeObserver(draw);ro.observe(svg);
 /* ---------- aset ---------- */
 let aEdit=null;
 $('aJ').innerHTML=JEN.map(([k,n])=>`<option value="${k}">${n}</option>`).join('');fmtIn($('aN'));
-const aVal=a=>a.j==='emas'?(+a.g||0)*(K.set.emas||0):a.j==='perhiasan'?(+a.g||0)*((+a.kr||24)/24)*(K.set.emas||0):(+a.n||0);
+const isG=a=>a.j==='emas'||a.j==='perhiasan';
+const aVal=a=>{if(isG(a)&&(+a.g>0)&&(K.set.emas>0))return (+a.g)*(a.j==='perhiasan'?(+a.kr||24)/24:1)*K.set.emas;return +a.n||0};
+const aWarn=a=>!isG(a)?'':!(+a.g>0)?' · ⚠ berat belum diisi':!(K.set.emas>0)?' · ⚠ harga emas belum diisi (tab Zakat)':'';
 const invAset=()=>allTx().filter(t=>t.t==='inv').map(t=>({id:'inv-'+t.id,tx:t.id,nm:t.c||ijn(t.j),j:t.j||'invest',g:t.g,kr:t.kr,n:t.n,s:t.d,z:t.z!==false}));
 const allAset=()=>[...K.aset,...invAset()];
-function aForm(){const j=$('aJ').value,gr=j==='emas'||j==='perhiasan';$('aGWrap').hidden=!gr;$('aNWrap').hidden=gr;$('aKW').hidden=j!=='perhiasan';
+function aForm(){const j=$('aJ').value,gr=j==='emas'||j==='perhiasan';$('aGWrap').hidden=!gr;$('aNWrap').hidden=false;$('aKW').hidden=j!=='perhiasan';
+  $('aNL').textContent=gr?'Harga beli (Rp, opsional)':'Nilai sekarang (Rp)';
   $('aZL').textContent=j==='hutang'?'Hutang jatuh tempo (dikurangkan dari zakat)':'Masuk hitungan zakat mal';
   $('aGHint').textContent='Nilai dihitung dari harga emas di tab Zakat: '+rp(K.set.emas||0)+'/gram'+(j==='perhiasan'?' × kadar/24':'')}
 $('aJ').onchange=()=>{$('aZ').checked=!!(JEN.find(x=>x[0]===$('aJ').value)||[])[2];aForm()};
@@ -609,7 +612,7 @@ function renderAset(){const AA=allAset(),as=AA.filter(a=>a.j!=='hutang'),hu=K.as
   const g={};if(TD)g.dompet=TD;as.forEach(a=>g[a.j]=(g[a.j]||0)+aVal(a));const arr=Object.entries(g).sort((a,b)=>b[1]-a[1]);
   $('aBars').innerHTML=arr.length&&arr[0][1]?arr.map(([j,v])=>`<div class="b"><div class="t"><span>${esc(jn(j))} <span style="color:var(--mut)">${TA?Math.round(v/TA*100):0}%</span></span><span>${rp(v)}</span></div><div class="tr"><div style="width:${v/arr[0][1]*100}%;background:${j==='emas'||j==='perhiasan'?'var(--gold)':'var(--pri)'}"></div></div></div>`).join(''):'<div class="empty">Tambahkan aset pertama lewat formulir.</div>';
   const order=JEN.map(x=>x[0]);
-  $('aList').innerHTML=`<div class="tx"><div><div class="k">Rekening &amp; dompet (${K.akun.length})</div><div class="s">Otomatis dari tab Dompet</div></div><div class="amt">${rp(TD)}</div><div><button class="mini" type="button" onclick="this.dispatchEvent(new CustomEvent('gotab',{bubbles:true,detail:'dompet'}))">Lihat</button></div></div>`+(AA.length?AA.slice().sort((a,b)=>order.indexOf(a.j)-order.indexOf(b.j)).map(a=>`<div class="tx"><div><div class="k">${esc(a.nm||jn(a.j))}</div><div class="s">${esc(jn(a.j))}${a.j==='emas'||a.j==='perhiasan'?' · '+esc(a.g)+' g'+(a.j==='perhiasan'?' '+esc(a.kr||24)+'K':''):''}${a.s?' · sejak '+esc(fD(a.s)):''}${a.z?(a.j==='hutang'?' · dikurangkan':' · kena zakat'):''}${a.tx?' · dari catatan investasi':''}</div></div>
+  $('aList').innerHTML=`<div class="tx"><div><div class="k">Rekening &amp; dompet (${K.akun.length})</div><div class="s">Otomatis dari tab Dompet</div></div><div class="amt">${rp(TD)}</div><div><button class="mini" type="button" onclick="this.dispatchEvent(new CustomEvent('gotab',{bubbles:true,detail:'dompet'}))">Lihat</button></div></div>`+(AA.length?AA.slice().sort((a,b)=>order.indexOf(a.j)-order.indexOf(b.j)).map(a=>`<div class="tx"><div><div class="k">${esc(a.nm||jn(a.j))}</div><div class="s">${esc(jn(a.j))}${a.j==='emas'||a.j==='perhiasan'?' · '+esc(a.g)+' g'+(a.j==='perhiasan'?' '+esc(a.kr||24)+'K':''):''}${a.s?' · sejak '+esc(fD(a.s)):''}${a.z?(a.j==='hutang'?' · dikurangkan':' · kena zakat'):''}${a.tx?' · dari catatan investasi':''}<span class="neg">${aWarn(a)}</span></div></div>
    <div class="amt ${a.j==='hutang'?'out':''}">${a.j==='hutang'?'−':''}${rp(aVal(a))}</div><div>${a.tx?`<button class="mini" data-e="${esc(a.tx)}">Ubah</button><button class="mini" data-x="${esc(a.tx)}">Hapus</button>`:`<button class="mini" data-ae="${esc(a.id)}">Ubah</button><button class="mini" data-ax="${esc(a.id)}">Hapus</button>`}</div></div>`).join(''):'<div class="empty">Belum ada aset lain. Contoh: logam mulia, tabungan haji, rumah.</div>')}
 document.addEventListener('gotab',e=>go(e.detail));
 
