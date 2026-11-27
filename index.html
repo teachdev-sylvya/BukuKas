@@ -123,6 +123,13 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .rkl .gp{margin-top:12px;background:var(--soft);border-bottom:0}.rkl .gp .nm{color:var(--pri);font-weight:900}
 .rkl .tt{margin-top:10px;border-top:2px solid var(--ink);border-bottom:0;border-radius:0}.rkl .tt .nm{font-weight:900}
 @media(max-width:380px){.rkl .v b{font-size:12.5px}}
+.subtab{position:sticky;top:0;z-index:4;display:flex;gap:6px;overflow-x:auto;padding:12px 0 10px;margin-top:4px;background:var(--bg);scrollbar-width:none}
+.subtab::-webkit-scrollbar{display:none}
+.subtab button{flex:1 1 0;border:1.5px solid var(--lav);background:var(--pn);color:var(--pri);font:inherit;font-size:14px;font-weight:800;padding:9px 4px;min-height:42px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.subtab button[aria-selected=true]{background:var(--pri);color:#fff;border-color:var(--pri)}
+#rMode{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}#rMode .chip{padding:7px 4px;font-size:14px}
+.pbar .per{margin:0 auto}
+@media(max-width:400px){.subtab button,#rMode .chip{font-size:13px}}
 .top1{background:var(--pink);border-radius:14px;padding:10px 14px;font-size:15px;margin-top:4px}
 @media(max-width:600px){.dn{grid-template-columns:1fr}.dn svg{max-width:200px}}
 .meter{height:18px;background:var(--soft);border-radius:18px;overflow:hidden;margin:10px 0 4px}
@@ -202,12 +209,24 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
     <div class="per"><button class="mini" id="rPrev" aria-label="Periode sebelumnya">◀</button><strong id="rLbl"></strong><button class="mini" id="rNext" aria-label="Periode berikutnya">▶</button></div>
   </div>
   <div class="kpi" id="rKpi"></div>
-  <h3 id="rChH">Grafik</h3>
+</div>
+<div class="subtab" role="tablist" id="rSubs">
+  <button type="button" data-s="grafik">Grafik</button>
+  <button type="button" data-s="kategori">Kategori</button>
+  <button type="button" data-s="dompet">Dompet</button>
+  <button type="button" data-s="transaksi">Transaksi</button>
+</div>
+<div data-sub="grafik">
+<div class="pn">
+  <h2 id="rChH" style="margin-bottom:6px">Grafik</h2>
   <div class="leg"><span><i style="background:var(--in)"></i>Pemasukan</span><span><i style="background:var(--out)"></i>Pengeluaran</span></div>
   <div class="fig"><svg id="rCh" role="img" aria-label="Grafik pemasukan dan pengeluaran"></svg></div>
   <div class="cap" id="rCap">Ketuk batang untuk melihat angkanya.</div>
 </div>
-<div class="grid two">
+</div>
+<div data-sub="kategori" hidden>
+<p class="hint" style="text-align:center;margin:0 0 10px">Ketuk bagian donat atau nama kategori untuk melihat rinciannya.</p>
+<div class="grid two" style="margin-top:0">
 <div class="pn">
   <h2 id="oDnH">Pengeluaran per kategori</h2>
   <div id="oTop"></div>
@@ -221,14 +240,18 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
   <div id="iDet"></div>
 </div>
 </div>
-<p class="hint" style="text-align:center">Ketuk bagian donat atau nama kategori untuk melihat rinciannya.</p>
-<div class="pn" style="margin-top:16px">
+</div>
+<div data-sub="dompet" hidden>
+<div class="pn">
   <h2 id="rkH">Rekap per dompet</h2>
-  <p class="hint" style="margin-top:-6px">Masuk/keluar = pemasukan & pengeluaran. Saldo ± = perubahan saldo, sudah termasuk pindah dana & investasi. Ketuk baris untuk rincian.</p>
+  <p class="hint" style="margin-top:-6px">Masuk/keluar = pemasukan &amp; pengeluaran. Saldo ± = perubahan saldo, sudah termasuk pindah dana &amp; investasi. Ketuk dompet untuk rincian.</p>
   <div class="rkl" id="rkT"></div>
   <div id="rkDet"></div>
 </div>
-<div class="pn" style="margin-top:16px"><h2>Rincian transaksi</h2><div id="rList"></div></div>
+</div>
+<div data-sub="transaksi" hidden>
+<div class="pn"><h2>Rincian transaksi</h2><div id="rList"></div></div>
+</div>
 </section>
 
 <section id="v-dompet" hidden>
@@ -588,6 +611,10 @@ function rkDetail(){const a=K.akun.find(x=>x.id===rkSel);if(!a){$('rkDet').inner
 $('rkT').onclick=e=>{const r=e.target.closest('[data-rk]');if(!r)return;rkSel=rkSel===r.dataset.rk?'':r.dataset.rk;
   $('rkT').querySelectorAll('[data-rk]').forEach(x=>x.classList.toggle('on',x.dataset.rk===rkSel));rkDetail();if(rkSel)$('rkDet').scrollIntoView({behavior:'smooth',block:'nearest'})};
 document.addEventListener('click',e=>{if(e.target.closest('[data-rkc]')){rkSel='';$('rkT').querySelectorAll('.on').forEach(x=>x.classList.remove('on'));rkDetail()}});
+let rSub='grafik';try{rSub=localStorage.getItem(LS+'-sub')||'grafik'}catch(e){}
+function showSub(){document.querySelectorAll('#v-laporan [data-sub]').forEach(d=>d.hidden=d.dataset.sub!==rSub);
+  document.querySelectorAll('#rSubs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.s===rSub));if(rSub==='grafik')draw()}
+$('rSubs').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSub=b.dataset.s;try{localStorage.setItem(LS+'-sub',rSub)}catch(x){};showSub()};
 function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1)),pl=inR(pr.s,pr.e);
   $('rMode').innerHTML=MODES.map(([m,n])=>`<button class="chip${m===rM?' on':''}" data-m="${m}">${n}</button>`).join('');
   $('rLbl').textContent=r.l;
@@ -602,7 +629,7 @@ function renderLap(){const r=range(rRef),l=inR(r.s,r.e),pr=range(shift(rRef,-1))
   donut('o',grp('out',x=>x.k),r.l,l.filter(x=>x.t==='out'));donut('i',grp('in',x=>x.k),r.l,l.filter(x=>x.t==='in'));
   rekap(l,r.l);
   const byD={};l.forEach(x=>(byD[x.d]||=[]).push(x));
-  $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(txRow).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>'}
+  $('rList').innerHTML=Object.keys(byD).sort().reverse().map(d=>`<div class="day">${fD(d)}</div>`+byD[d].slice().reverse().map(txRow).join('')).join('')||'<div class="empty">Belum ada transaksi di periode ini.</div>';showSub()}
 const svg=$('rCh');
 function draw(){if(view!=='laporan'||!bk.length)return;const W=svg.clientWidth,H=svg.clientHeight;if(!W)return;
   const pl=W<520?36:52,pb=24,pt=8,n=bk.length,mx=Math.max(1,...bk.map(b=>Math.max(b.i,b.o)));
